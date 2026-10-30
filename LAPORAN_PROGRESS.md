@@ -48,7 +48,7 @@ Ketentuan status yang dipakai:
 
 Catatan bukti:
 
-- Hasil pengujian yang dicantumkan pada Bab 9 berasal dari eksekusi nyata `flutter analyze`, `flutter test`, tiga script verifikasi Supabase, dan verifikasi UI web pada 28 Oktober 2026.
+- Hasil pengujian yang dicantumkan pada Bab 9 berasal dari eksekusi nyata `flutter analyze`, `flutter test`, tiga script verifikasi Supabase, dan verifikasi UI web pada 28–30 Oktober 2026.
 - Tangkapan layar aplikasi sudah dibuat di lingkungan verifikasi tetapi belum disalin ke repositori; hasil build APK dan pengujian perangkat fisik **belum tersedia**. Bagian yang belum memiliki berkas bukti ditandai sebagai placeholder dan wajib dilengkapi sebelum laporan akhir dikumpulkan.
 - Seluruh diagram pada laporan ini masih berupa diagram teks sementara. Gambar final menyusul pada revisi laporan.
 - Data event dan tiket berasal dari seed demo pada project Supabase, bukan data produksi.
@@ -80,13 +80,13 @@ Rencana Pengembangan Berikutnya
 
 EventKuy adalah aplikasi mobile untuk menemukan event (konser, seminar, workshop, dan olahraga), menyimpan event favorit, membeli tiket, serta menampilkan e-ticket ber-QR. Frontend Flutter sudah terhubung ke backend Supabase untuk autentikasi, event, favorit, checkout, tiket, PDF, dashboard organizer, dan check-in.
 
-Capaian utama per 28 Oktober 2026:
+Capaian utama per 30 Oktober 2026:
 
 1. Seluruh tampilan utama telah diimplementasikan dan responsif pada mobile, tablet, dan desktop.
 2. Autentikasi memakai Supabase Auth (email/password); sesi dikelola `supabase_flutter` dan profil dibaca dari tabel `profiles`.
 3. Alur tiket berjalan: event dari Supabase, checkout dengan voucher lewat RPC `checkout`, tiket ber-QR, unduh PDF, serta check-in organizer lewat RPC `check_in_ticket`.
 4. Dashboard organizer menampilkan statistik nyata dari Supabase dan hanya event milik organizer yang login.
-5. `flutter analyze` menghasilkan **No issues found**, `flutter test` lulus **27 dari 27 pengujian**, dan `flutter build web --release` sukses.
+5. `flutter analyze` menghasilkan **No issues found**, `flutter test` lulus **60 dari 60 pengujian**, dan `flutter build web --release` sukses.
 6. Verifikasi UI web dengan headless Chrome mencakup login attendee/organizer, tiket, PDF, tiket tetap ada setelah login ulang, check-in manual, dan bottom bar detail event pada 390x844, 768x1024, serta 1400x900.
 7. Yang belum selesai: pemindaian kamera di Chrome/Android, share sheet PDF di perangkat, build APK, dan pembayaran Midtrans masih simulasi.
 
@@ -100,7 +100,7 @@ Capaian utama per 28 Oktober 2026:
 | UI mobile | Selesai | Widget test 390–1400 px, verifikasi headless Chrome |
 | QR, e-ticket, check-in | Berjalan | QR asli, PDF, check-in server; kamera pending |
 | Dashboard organizer | Selesai (Supabase) | Statistik nyata, filter `organizerId` |
-| Pengujian | Berjalan | 27 widget/unit test + 3 script verifikasi backend |
+| Pengujian | Berjalan | 60 widget/unit test + 3 script verifikasi backend |
 | Rilis | Berjalan | Build web sukses; APK dan perangkat pending |
 
 ---
@@ -160,7 +160,7 @@ Kebutuhan fungsional diberi ID agar dapat ditelusuri ke layar, endpoint, dan tes
 | Maintainability | Pemisahan layer UI, provider, model, service | Struktur `core`, `models`, `providers`, `screens`, `services`, `widgets` |
 | Kompatibilitas | Android sebagai target utama; Flutter stabil | Flutter 3.47.5, Dart 3.13.4 |
 | Kualitas kode | Tidak ada issue analyzer | `flutter analyze`: No issues found |
-| Pengujian | Alur utama tercakup widget test dan verifikasi backend | 27/27 test lulus + 3 script backend pada 28 Oktober 2026 |
+| Pengujian | Alur utama tercakup widget test dan verifikasi backend | 60/60 test lulus + 3 script backend pada 30 Oktober 2026 |
 
 ### 1.5  Application Features and User Roles
 
@@ -501,19 +501,19 @@ Visual Studio tidak terpasang, tetapi tidak menghambat target Android dan web. P
 |---|---|
 | Repositori | `https://github.com/Acumalaka-ngod/-EventKuy-app.git` |
 | Branch aktif | `main` |
-| Commit terakhir | `b503219` — mengabaikan artefak build Gradle |
-| Perubahan belum di-commit | Redesign UI, integrasi Supabase, test, dan dokumen |
+| Commit terakhir | Riwayat fitur qty/stok/voucher/favorit + dokumen (lihat `git log -1`) |
+| Perubahan belum di-commit | Tidak ada setelah commit terakhir |
 | Artefak build | Diabaikan melalui `.gitignore` |
 
-Perubahan redesign, backend Supabase, dan perbaikan terbaru belum di-commit.
-Commit dan push perlu dilakukan setelah verifikasi visual oleh pemilik proyek.
+Redesign UI, integrasi Supabase, test, dan dokumen sudah di-commit dan
+di-push ke remote `main`.
 
 ### 2.8  Testing Environment
 
 | Perintah | Hasil |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | 27/27 lulus |
+| `flutter test` | 60/60 lulus |
 | `flutter build web --release` | Sukses dengan `--dart-define-from-file=supabase.local.json` |
 | `flutter doctor` | Satu peringatan (Visual Studio tidak terpasang) |
 | `flutter run -d chrome` | Tersedia sebagai target pengembangan |
@@ -542,6 +542,8 @@ Alasan pemilihan: kebutuhan relasional (user, event, tiket, transaksi, favorit) 
 | transactions | id, user_id, event_id, ticket_id, subtotal, admin_fee, discount, total, payment_method, status, created_at | FK user/event/ticket, satu tiket satu transaksi |
 | favorites | id, user_id, event_id, created_at | unik per pasangan user/event |
 | vouchers | code, discount, active_from, active_to, quota | code unik |
+| voucher_redemptions | code, user_id, ticket_id, created_at | PK `(code, user_id)` — satu voucher hanya sekali per user |
+| event_stock (view) | event_id, quota, sold | read-only; jumlah tiket `paid`/`checked_in` per event |
 
 Model Flutter (`Event`, `Ticket`, `AppUser`) sudah disesuaikan dengan UUID dan `snake_case`. Detail konsistensi field ada pada Lampiran B.
 
@@ -550,6 +552,8 @@ Model Flutter (`Event`, `Ticket`, `AppUser`) sudah disesuaikan dengan UUID dan `
 - `tickets.event_id` mengacu ke `events.id`; `tickets.user_id` mengacu ke `auth.users.id`.
 - `transactions.ticket_id` mengacu ke `tickets.id`; satu transaksi menghasilkan satu tiket.
 - `favorites` memakai kunci unik `(user_id, event_id)`.
+- `voucher_redemptions` memakai PK `(code, user_id)`; RPC `checkout` menolak voucher yang sudah pernah dipakai user tersebut, sehingga satu voucher hanya berlaku sekali per pengguna.
+- Stok dihitung dari tiket berstatus `paid`/`checked_in`; `event_stock` menyajikan `quota` dan `sold` agar aplikasi dapat menampilkan sisa tiket dan label "Tiket Habis".
 - Harga, biaya layanan, dan diskon tidak boleh negatif; total dihitung di RPC.
 - Status tiket hanya boleh berubah dari `pending` ke `paid` ke `checked_in`.
 
@@ -564,7 +568,7 @@ Otorisasi diterapkan dengan Supabase Row Level Security:
 
 ### 3.5  Seed Data
 
-Seed berisi 7 event (Sound of Tomorrow, We The Fest 2025, Photography Workshop, Future of Technology, Jakarta Running Festival, UI/UX Design Workshop, Digital Marketing Summit) dan voucher `EVENTKUY`. Seed idempoten dan sudah dijalankan pada project aktif.
+Seed berisi 7 event (Sound of Tomorrow, We The Fest 2025, Photography Workshop, Future of Technology, Jakarta Running Festival, UI/UX Design Workshop, Digital Marketing Summit) dan voucher `EVENTKUY` serta `DISKON10` (masing-masing diskon Rp 25.000, kuota 1000). Seed idempoten dan sudah dijalankan pada project aktif.
 
 ### 3.6  Testing Results
 
@@ -668,10 +672,10 @@ Pengujian login/logout nyata dilakukan manual melalui UI web pada 28 Oktober
 
 | Layar | Akses | Data |
 |---|---|---|
-| Beranda/Jelajahi | `events.select()` | Daftar event, filter kategori/kota di klien |
-| Detail | objek event dari daftar | Detail event |
+| Beranda/Jelajahi | `events.select()` + `event_stock` | Daftar event, filter kategori/kota di klien, jumlah terjual untuk label stok |
+| Detail | objek event dari daftar | Detail event + sisa tiket |
 | Favorit | `favorites` select/insert/delete | Sinkronisasi favorit per user |
-| Checkout | RPC `checkout` | Transaksi + tiket + diskon voucher |
+| Checkout | RPC `checkout` + `vouchers` + `voucher_redemptions` | Transaksi, beberapa tiket (qty), stok, dan diskon voucher sekali pakai |
 | Tiket Saya | `tickets.select()` | Tiket pengguna |
 | Scan | RPC `check_in_ticket` | Validasi check-in oleh organizer |
 | Organizer | `events` + `tickets` | Statistik dan tiket per event |
@@ -737,17 +741,23 @@ Perbaikan terbaru: pada layar sempit, quick filter disusun vertikal (chip dapat 
 
 Konten: hero image dengan tombol kembali, bagikan, dan favorit; indikator "1 / 4 Foto"; chip kategori dan rating "4.9 (320 ulasan)"; judul; kartu tanggal/waktu; kartu lokasi berisi alamat lengkap; kartu organizer dengan tombol "Ikuti"; section "Tentang Acara"; tagar; serta buy bar sticky berisi "Harga Tiket" dan tombol "Daftar & Beli Tiket".
 
+Buy bar menampilkan harga tiket dan sisa tiket ("Sisa N tiket"). Jika stok habis, tombol berubah menjadi "Tiket Habis" dan dinonaktifkan. Kartu event di Beranda/Jelajahi/Favorit juga menampilkan overlay label "Tiket Habis" pada thumbnail.
+
 Buy bar memakai `Scaffold.bottomNavigationBar`, bukan `bottomSheet`, agar selebar viewport. Konten bar dibatasi 860 px dan padding body disesuaikan supaya konten terakhir tidak tertutup. Regression test `event-detail-buy-bar` memeriksa tinggi < 160 px, lebar sama dengan viewport, dan judul event tetap dapat di-hit-test pada 390x844, 768x1024, dan 1400x900.
 
 Tombol bagikan baru menampilkan snackbar; native share belum diimplementasikan. Tombol organizer menampilkan snackbar konfirmasi mengikuti.
 
 ### 6.7  Checkout
 
-Konten: step indicator (Pilih, Bayar, E-Tiket), kartu ringkasan event, form informasi pemesan (nama, email, nomor WhatsApp), tiga metode pembayaran (GoPay, Virtual Account, Kartu Kredit/Debit), voucher, rincian biaya (harga tiket, biaya layanan Rp 2.500, diskon), total, dan tombol "Bayar Sekarang".
+Konten: step indicator (Pilih, Bayar, E-Tiket), kartu ringkasan event, pemilih jumlah tiket (stepper +/-, sisa stok), form informasi pemesan (nama, email, nomor WhatsApp), tiga metode pembayaran (GoPay, Virtual Account, Kartu Kredit/Debit), voucher, rincian biaya (harga tiket × qty, biaya layanan Rp 2.500 × qty, diskon), total, dan tombol "Bayar Sekarang".
 
 Perilaku:
 
-- Voucher valid: `EVENTKUY` dan `DISKON10`, diskon Rp 25.000; validasi dan perhitungan dilakukan RPC `checkout` di server.
+- Jumlah tiket dapat ditambah/dikurangi; tombol "+" berhenti di sisa stok. Subtotal, biaya layanan, dan total dihitung ulang mengikuti qty.
+- Satu transaksi dengan qty > 1 membuat beberapa tiket sekaligus. Dialog sukses menampilkan kode tiket pertama dan jumlah tiket lainnya.
+- Event yang stoknya habis tidak dapat dibeli: tombol bayar berubah menjadi "Tiket Habis" dan dinonaktifkan.
+- Voucher valid: `EVENTKUY` dan `DISKON10`, diskon Rp 25.000; validasi, stok, dan perhitungan dilakukan RPC `checkout` di server.
+- Satu voucher hanya bisa dipakai sekali oleh user yang sama. Pemakaian dicatat di `voucher_redemptions` (PK `code, user_id`); percobaan kedua ditolak server dan UI menampilkan pesan "sudah pernah kamu pakai".
 - Voucher salah menampilkan pesan error dari server.
 - Tombol bayar menampilkan loading, memanggil RPC `checkout` yang membuat transaksi dan tiket berstatus `paid`, lalu menampilkan dialog sukses dengan TICKET ID dan tombol "Lihat Tiket Saya".
 - Layout desktop memakai dua kolom (form di kiri, ringkasan total di kanan); mobile satu kolom.
@@ -764,6 +774,8 @@ Grid tiket memakai 1/2/3 kolom dengan tinggi adaptif terhadap skala teks agar ti
 ### 6.9  Favorit
 
 Favorit disimpan di tabel `favorites` Supabase dengan RLS per pengguna, ditampilkan sebagai daftar kartu event, dengan aksi hapus semua dan empty state. Toggle hati tersedia pada kartu dan detail event. Perubahan langsung disinkronkan ke server, bukan disimpan di perangkat.
+
+Untuk mencegah salah pencet, melepas favorit di layar Favorit tidak langsung menghapus kartu: hanya ikon hati yang berubah dari merah menjadi putih (outline). `FavoriteProvider` memisahkan `ids` (status favorit sebenarnya) dan `shelfIds` (kartu yang ditampilkan). Daftar kartu disaring ulang (`syncShelf`) saat tab Favorit dibuka kembali, sedangkan tombol "Hapus Semua" (`clearFavorites`) mengosongkan keduanya.
 
 ### 6.10  Profil
 
@@ -960,14 +972,14 @@ pwsh -File tool/verify-e2e.ps1
 
 | Item | Hasil |
 |---|---|
-| Tanggal eksekusi | 28 Oktober 2026 |
+| Tanggal eksekusi | 30 Oktober 2026 |
 | `flutter analyze` | No issues found (0 issue) |
-| `flutter test` | 27 lulus, 0 gagal |
-| Jumlah file test | 4 file: `ui_smoke_test.dart`, `event_grid_card_test.dart`, `widget_test.dart`, `ticket_pdf_test.dart` |
+| `flutter test` | 60 lulus, 0 gagal |
+| Jumlah file test | 9 file: `ui_smoke_test.dart`, `event_grid_card_test.dart`, `event_gallery_test.dart`, `widget_test.dart`, `ticket_pdf_test.dart`, `ticket_watch_test.dart`, `checkout_rules_test.dart`, `stock_soldout_test.dart`, `favorite_hold_test.dart` |
 | Ukuran layar teruji | 390x844, 768x1024, 1080x800, 1366x620, 1400x900 |
 | Pengujian perangkat fisik | Belum dilakukan |
 | Pengujian API/backend | Lulus 3 script verifikasi Supabase |
-| Pengujian unit perhitungan | Sebagian: PDF dan nama file; format rupiah/tanggal belum |
+| Pengujian unit perhitungan | Sebagian: qty, stok, total/diskon, PDF, nama file; format rupiah/tanggal belum |
 
 Rincian pengujian otomatis:
 
@@ -983,6 +995,10 @@ Rincian pengujian otomatis:
 | WT-08 | Boot aplikasi ke splash | 1 | Lulus | Selesai |
 | WT-09 | Pembuatan PDF dan nama file | 3 | Lulus | Selesai |
 | WT-10 | Check-in lewat kode manual di UI | 1 | Lulus | Selesai |
+| TW-01 | Sinkronisasi tiket (realtime/polling) dan notifikasi check-in | 3 | Lulus | Selesai |
+| CT-01 | Aturan checkout: qty, stok, voucher sekali pakai | 8 | Lulus | Selesai |
+| CT-02 | Thumbnail "Tiket Habis", stepper qty, checkout habis, voucher terpakai | 12 | Lulus | Selesai |
+| CT-03 | Favorit tetap tampil setelah hati dilepas (anti salah pencet) | 4 | Lulus | Selesai |
 
 Contoh potongan test yang dipakai:
 
@@ -1006,7 +1022,7 @@ for (final size in const [Size(390, 844), Size(768, 1024), Size(1400, 900)]) {
 }
 ```
 
-**Gambar 11.** Tangkapan layar output `flutter test` (27/27 lulus). Status: placeholder; screenshot terminal aktual menyusul.
+**Gambar 11.** Tangkapan layar output `flutter test` (60/60 lulus). Status: placeholder; screenshot terminal aktual menyusul.
 
 ### 9.3  Regression Findings and Fixes
 
@@ -1021,6 +1037,9 @@ Selama pengembangan ditemukan beberapa masalah layout dan satu masalah konsisten
 | 5 | Baris total checkout berisiko overflow pada font uji | Overflow pada ukuran sempit | Baris total memakai `Wrap` | Diperbaiki |
 | 6 | Bottom bar detail event memakai `Scaffold.bottomSheet` | Material 3 membatasi lebar 640 px; bar menutupi konten di tablet/desktop | Ganti ke `bottomNavigationBar`, full width, konten maksimal 860 px, padding body disesuaikan | Diperbaiki |
 | 7 | Regression test belum memeriksa lebar bar | Bug lebar 640 px lolos dari pengujian | Tambah assertion `event-detail-buy-bar` pada 3 ukuran | Diperbaiki |
+| 8 | Checkout hanya bisa membeli 1 tiket dan voucher dapat dipakai berulang | Kebutuhan pembelian qty dan aturan voucher sekali pakai tidak terpenuhi | RPC `checkout` menerima `p_qty`, memvalidasi stok, dan mencatat `voucher_redemptions` | Diperbaiki |
+| 9 | Favorit langsung hilang saat tombol hati tersenggol | Event sulit ditemukan kembali dan rawan salah pencet | Pisahkan `ids` dan `shelfIds`; kartu baru disaring saat tab Favorit dibuka ulang | Diperbaiki |
+| 10 | Stok tiket tidak terlihat dan event habis masih bisa dibeli | Pengguna dapat membeli melebihi kuota | View `event_stock` + label "Tiket Habis" pada thumbnail/detail/checkout | Diperbaiki |
 
 Catatan teknis: widget test Flutter memakai font Ahem yang membuat lebar/tinggi teks berbeda dari font asli, sehingga beberapa overflow hanya muncul di test. Perbaikan dilakukan agar layout tetap aman pada kedua kondisi. Debug print `EVENTKUY_DEBUG` juga sudah dihapus dari `lib/main.dart`.
 
@@ -1028,7 +1047,7 @@ Catatan teknis: widget test Flutter memakai font Ahem yang membuat lebar/tinggi 
 
 | Area | Test yang Belum Ada | Rencana |
 |---|---|---|
-| Unit test | Format rupiah, tanggal, perhitungan total/diskon | Tambah test deterministik |
+| Unit test | Format rupiah dan tanggal | Tambah test deterministik |
 | API integration | Timeout, retry, dan kegagalan jaringan | Tambah test dengan server mock |
 | Authentication | Registrasi baru, reset password via email | Uji manual di perangkat |
 | Database | Edge case RLS tambahan | Perluas script verifikasi |
@@ -1047,7 +1066,10 @@ Catatan teknis: widget test Flutter memakai font Ahem yang membuat lebar/tinggi 
 - `flutter analyze` dipertahankan pada nol issue.
 - Konfigurasi Supabase dimuat lewat `--dart-define-from-file`; file kredensial lokal di-ignore.
 - Bottom bar detail event memakai `bottomNavigationBar` agar full width dan tidak menutupi konten.
-- Debug print `EVENTKUY_DEBUG` sudah dihapus; jumlah pengujian aktif menjadi 27.
+- Debug print `EVENTKUY_DEBUG` sudah dihapus; jumlah pengujian aktif menjadi 60.
+- Stok dan status habis dihitung di server (`event_stock`), bukan dari data lokal, sehingga konsisten antar perangkat.
+- Aturan voucher sekali pakai ditegakkan di database (PK `code, user_id`), bukan hanya di UI.
+- Daftar favorit memakai `shelfIds` agar salah pencet tidak langsung menghapus kartu.
 
 ### 9.6  Build and Deployment
 
@@ -1058,7 +1080,7 @@ Catatan teknis: widget test Flutter memakai font Ahem yang membuat lebar/tinggi 
 | Versi | 1.0.0+1 |
 | Signing Android | Belum dikonfigurasi |
 | Izin manifest | `INTERNET` dan `CAMERA` sudah ditambahkan; `NSCameraUsageDescription` ada di iOS |
-| Build web release | Sukses 28 Oktober 2026 dengan `--dart-define-from-file=supabase.local.json` |
+| Build web release | Sukses 30 Oktober 2026 dengan `--dart-define-from-file=supabase.local.json` |
 | Build APK/AAB | Belum dibangun |
 | Emulator/perangkat Android | Belum diuji |
 | Play Store | Belum dimulai |
@@ -1079,15 +1101,22 @@ menyiapkan kebijakan privasi dan aset store, lalu mengunggah ke Play Console.
 | Perubahan file tak terduga | Kode dapat kembali ke versi lama | Commit rutin dan review diff sebelum push |
 | Unit test perhitungan terbatas | Kesalahan format/total tidak terdeteksi | Tambah unit test format rupiah dan total |
 | Checkout UI belum diuji E2E | Alur checkout langsung dari UI belum terbukti | Uji checkout UI ke Supabase |
+| Migrasi `qty_voucher_stock.sql` belum dijalankan di project aktif | Fitur qty, stok, dan voucher sekali pakai gagal di runtime | Jalankan migrasi di Supabase Studio sebelum uji aplikasi |
+| Realtime tiket belum aktif | Notifikasi check-in hanya mengandalkan polling | Aktifkan Realtime untuk tabel `tickets` |
 
 ### 9.8  Final Project Evaluation
 
 EventKuy sudah berjalan end-to-end di web dengan Supabase: autentikasi,
 event, favorit, tiket, PDF, dashboard organizer, dan check-in manual. Checkout
 dan voucher tervalidasi lewat RPC serta script backend; alur checkout langsung
-dari layar checkout belum diuji E2E. Kualitas layout dijaga oleh 27 test, tiga
+dari layar checkout belum diuji E2E. Kualitas layout dijaga oleh 60 test, tiga
 script verifikasi backend, dan verifikasi UI headless Chrome pada tiga ukuran
 layar.
+
+Fitur pembelian banyak tiket dengan stok, voucher sekali pakai per pengguna,
+dan favorit yang tidak langsung hilang saat hati dilepas sudah diimplementasikan
+dan diuji otomatis. Migrasi `supabase/qty_voucher_stock.sql` tetap perlu
+dijalankan di Supabase Studio agar aturan tersebut berlaku pada database aktif.
 
 Aplikasi belum dapat dinyatakan selesai sebagai produk karena pemindaian
 kamera belum diuji di perangkat, share sheet PDF Android/iOS belum diuji,
@@ -1102,11 +1131,11 @@ dinyatakan sebagai simulasi, bukan selesai penuh.
 Artefak yang tersedia saat ini:
 
 1. Repositori Flutter dengan layar utama, provider, model, dan service Supabase.
-2. `supabase/schema.sql` dan `supabase/seed.sql` untuk database, RLS, RPC, dan data awal.
+2. `supabase/schema.sql` dan `supabase/seed.sql` untuk database, RLS, RPC, dan data awal; migrasi tambahan di `supabase/qty_voucher_stock.sql` dan `supabase/realtime_tickets.sql`.
 3. Tiga script verifikasi backend di `tool/`.
 4. Dokumen desain dan kebutuhan: `DESIGN_SPEC.md`.
 5. Laporan progress ini dan `docs/P0_CHECKLIST.md`.
-6. Hasil `flutter analyze`, 27 test, dan build web release.
+6. Hasil `flutter analyze`, 60 test, dan build web release.
 
 Artefak yang masih harus dilengkapi: screenshot aplikasi di repositori, hasil
 build APK, bukti pengujian kamera/perangkat, dan integrasi pembayaran Midtrans.
@@ -1125,7 +1154,7 @@ build APK, bukti pengujian kamera/perangkat, dan integrasi pembayaran Midtrans.
 | Payment | Integrasi Midtrans dan bukti transaksi | Simulasi; Midtrans pending |
 | QR and check-in | QR, validasi kamera/server | QR/PDF/check-in server selesai; kamera pending |
 | Security | Uji otorisasi dan kepemilikan data | Selesai (RLS + RPC ownership) |
-| Testing | Test case dengan hasil aktual | 27/27 test + backend; device pending |
+| Testing | Test case dengan hasil aktual | 60/60 test + backend; device pending |
 | Release | APK build dan uji perangkat | Build web sukses; APK pending |
 | Documentation | Laporan progress, README, design spec | Tersedia |
 
@@ -1203,8 +1232,9 @@ Tabel ini menjadi acuan agar model Dart, JSON, dan kolom database tidak menyimpa
 | Entity | Kolom database/JSON | Atribut Dart saat ini | Tipe/Relasi |
 |---|---|---|---|
 | User | id, name, email | id, name, email | UUID string, string, string |
-| Event | id, organizer_id, title, description, date, location, price, quota, image_url, category, tags, time_range | id, organizerId, title, description, date, location, price, quota, imageUrl, category, tags, timeRange | UUID, UUID, string, date, numeric, int |
+| Event | id, organizer_id, title, description, date, location, price, quota, image_url, category, tags, time_range; `sold` dari view `event_stock` | id, organizerId, title, description, date, location, price, quota, sold, imageUrl, category, tags, timeRange | UUID, UUID, string, date, numeric, int |
 | Ticket | id, code, event_id, user_id, status, created_at | id, code, eventId, eventTitle, status | UUID, string unik, string, enum status |
+| CheckoutResult | balasan RPC `checkout`: ticket_codes, subtotal, admin_fee, discount, total | tickets, subtotal, adminFee, discount, total | DTO hasil transaksi (qty > 1) |
 | Favorite | id, user_id, event_id | Set<String> pada provider | relasi user-event, unik per pasangan |
 | Transaction | id, user_id, event_id, ticket_id, subtotal, admin_fee, discount, total, payment_method, status, created_at | Belum ada model | numeric(12,2) |
 
@@ -1250,7 +1280,7 @@ Hasil yang diharapkan pada kondisi saat ini:
 
 ```text
 flutter analyze  -> No issues found
-flutter test     -> 27 tes lulus
+flutter test     -> 60 tes lulus
 verify-supabase  -> lulus
 verify-organizer -> lulus
 verify-e2e       -> lulus
@@ -1265,8 +1295,8 @@ Catatan: pengujian widget memakai font uji sehingga hasil visualnya tidak identi
 
 | Fase | Lingkup | Status | Keluaran |
 |---|---|---|---|
-| A | Redesign UI, rebrand EventKuy, perbaikan layout, pengujian dasar | Selesai | Frontend responsif, 27 test lulus |
-| B | Integrasi Supabase (skema, RLS, auth, event, favorit, checkout, tiket) | Selesai | Data nyata, 3 script verifikasi lulus |
+| A | Redesign UI, rebrand EventKuy, perbaikan layout, pengujian dasar | Selesai | Frontend responsif, 60 test lulus |
+| B | Integrasi Supabase (skema, RLS, auth, event, favorit, checkout qty, stok, voucher sekali pakai, tiket) | Selesai | Data nyata, 3 script verifikasi lulus |
 | C | PDF e-ticket, dashboard organizer, check-in server | Selesai | PDF web, statistik nyata, check-in manual |
 | D | Verifikasi UI web, regression bottom bar, dokumentasi | Selesai | Bukti headless Chrome, laporan tersinkron |
 | E | Kamera QR dan share sheet PDF di perangkat | Berjalan | Uji Chrome/Android |
