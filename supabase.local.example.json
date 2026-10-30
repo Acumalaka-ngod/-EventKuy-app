@@ -1,0 +1,8 @@
+{
+  "SUPABASE_URL": "https://xxxx.supabase.co",
+  "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "E2E_ORGANIZER_EMAIL": "organizer@example.com",
+  "E2E_ORGANIZER_PASSWORD": "ganti-dengan-password-organizer",
+  "E2E_ATTENDEE_EMAIL": "attendee@example.com",
+  "E2E_ATTENDEE_PASSWORD": "ganti-dengan-password-attendee"
+}
