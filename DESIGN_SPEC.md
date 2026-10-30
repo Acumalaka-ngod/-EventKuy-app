@@ -186,8 +186,8 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
   - Header: label "EVENTKUY PASS", badge status **TIKET AKTIF** / **SUDAH CHECK-IN**, judul event, jadwal + ikon jam
   - Garis perforasi putus-putus + lekukan (cutout) kiri-kanan seperti tiket fisik
   - **QR code** (fungsi asli, bisa dipindai), kode teks "TICKET ID: AJG-…"
-  - Tombol **"Simulasi Scan Check-in"** — setelah check-in berubah menjadi panel hijau "Tiket Telah Digunakan"
-  - Kartu kecil: "Pemilik: {nama}" + link **Unduh PDF**
+  - Tombol **"Check-in Tiket"** untuk akun organizer — setelah check-in berubah menjadi panel hijau "Tiket Telah Digunakan"
+  - Kartu kecil: "Pemilik: {nama}" + link **Unduh PDF** (menghasilkan e-tiket PDF asli)
 - Layout: 1/2/3 kolom sesuai lebar layar
 
 **State kosong:** ilustrasi + "Belum Ada Tiket Terdaftar" + tombol **Cari Event Sekarang**.
@@ -311,7 +311,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 2. **Beli tiket:** Beranda → tap event (hero/kartu) → Detail Event → "Daftar & Beli Tiket" → isi data pemesan → pilih metode → (opsional pakai voucher) → Bayar → Dialog Sukses → Tiket Saya (QR muncul)
 3. **Cari event:** tab Jelajahi → ketik kata kunci / pilih kategori → tap kartu → Detail
 4. **Simpan favorit:** tap ikon hati di kartu/hero/detail → cek di tab Favorit → tap → Detail
-5. **Check-in di venue:** tab Tiket → tunjukkan QR → petugas scan (sekarang: tombol simulasi) → status berubah "SUDAH CHECK-IN" (hijau)
+5. **Check-in di venue:** tab Tiket → tunjukkan QR → petugas membuka Mode Petugas, scan QR dengan kamera (atau input kode manual) → status berubah "SUDAH CHECK-IN" (hijau)
 6. **Keluar akun:** tab Profil → "Keluar dari Akun" → konfirmasi → Login
 
 ---
@@ -372,12 +372,12 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 ## 9. Fitur Mendatang (rancang layout-nya dari sekarang)
 
 - ~~Peta lokasi event (Google Maps) + tombol "Petunjuk Arah"~~ **DIBATALKAN** — tanpa Google Maps API; lokasi hanya ditampilkan sebagai teks alamat lengkap di semua layar
-- **Mode scanner QR petugas** (kamera full-screen + frame scan + riwayat scan)
+- ~~**Mode scanner QR petugas** (kamera full-screen + frame scan + riwayat scan)~~ **SELESAI** — kamera asli lewat `mobile_scanner`, input kode manual, dan animasi garis scan
 - **Notifikasi push** + halaman daftar notifikasi (ikon lonceng di Beranda sudah ada)
 - **Halaman voucher/promo** (daftar promo aktif)
 - **Layar menu Profil yang belum ada:** Edit Profil, Riwayat Transaksi, Metode Pembayaran Tersimpan, Pusat Bantuan, Customer Care, Syarat & Privasi
 - **Halaman Organizer** (profil penyelenggara + daftar event-nya, dari tombol "Ikuti")
-- **Unduh e-ticket PDF** (tombol sudah ada di kartu tiket)
+- ~~**Unduh e-ticket PDF** (tombol sudah ada di kartu tiket)~~ **SELESAI** — PDF A5 ber-QR via package `pdf` + `printing`
 
 ---
 
