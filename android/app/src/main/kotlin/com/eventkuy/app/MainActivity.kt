@@ -1,4 +1,4 @@
-package com.ajangin.app
+package com.eventkuy.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -4,8 +4,11 @@ import '../models/event.dart';
 import 'event_card.dart';
 import 'event_image.dart';
 
-/// Banner hero Beranda: poster penuh, chip kategori, judul, tanggal & venue,
-/// tombol panah bulat — sesuai desain baru.
+/// Hero Beranda: poster di satu bidang, keterangan event di bidang lain.
+///
+/// Sebelumnya judul event ditumpuk di atas poster. Poster demo sudah memuat
+/// judulnya sendiri, jadi judul tampil dua kali, dan chip "FEATURED EVENT"
+/// menabrak label kategori. Sekarang poster dan teks tidak lagi berbagi ruang.
 class HeroBanner extends StatelessWidget {
   final Event event;
   final VoidCallback onTap;
@@ -15,134 +18,107 @@ class HeroBanner extends StatelessWidget {
     super.key,
     required this.event,
     required this.onTap,
-    this.height = 210,
+    this.height = 330,
   });
 
   @override
   Widget build(BuildContext context) {
-    final tagline = event.tags.take(2).join(', ');
+    final kicker =
+        '${event.category.toUpperCase()}  ·  ${formatTanggalSingkat(event.date)}';
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(
-            fit: StackFit.expand,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 720;
+        final titleSize = wide ? 28.0 : 24.0;
+
+        final info = Padding(
+          padding: EdgeInsets.fromLTRB(
+            wide ? 24 : 16,
+            wide ? 24 : 14,
+            wide ? 24 : 16,
+            wide ? 24 : 16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              EventImage(
-                imageUrl: event.imageUrl,
-                eventId: event.id,
-                fit: BoxFit.cover,
-              ),
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.heroGradient,
+              Text(
+                kicker,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: AppTheme.bodyFont,
+                  color: AppTheme.violetDark,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
                 ),
               ),
-              Positioned(
-                left: 16,
-                right: 64,
-                bottom: 14,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        event.category,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      event.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                    if (tagline.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        tagline,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today_rounded,
-                            color: Colors.white70, size: 12),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          child: Text(
-                            '${formatTanggal(event.date)} • ${venueOf(event.location)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              const SizedBox(height: 8),
+              Text(
+                event.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AppTheme.headingFont,
+                  color: AppTheme.ink,
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.9,
+                  height: 1.1,
                 ),
               ),
-              // Tombol panah bulat
-              Positioned(
-                right: 14,
-                bottom: 14,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: AppTheme.navy,
-                    size: 19,
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                venueOf(event.location),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: AppTheme.bodyFont,
+                  color: AppTheme.muted,
+                  fontSize: 12.5,
                 ),
               ),
             ],
           ),
-        ),
-      ),
+        );
+
+        final poster = EventImage(
+          imageUrl: event.imageUrl,
+          eventId: event.id,
+          fit: BoxFit.cover,
+        );
+
+        return GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            height: height,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusHero),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: wide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(flex: 3, child: poster),
+                      Expanded(flex: 2, child: info),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: poster),
+                      info,
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/favorite_provider.dart';
+import '../../providers/ticket_provider.dart';
 import '../../widgets/app_logo.dart';
 import '../auth/login_screen.dart';
 import '../main_navigation.dart';
@@ -27,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1100),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.88, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
     );
 
@@ -51,6 +53,15 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     await auth.tryAutoLogin();
     if (!mounted) return;
+
+    if (auth.isLoggedIn) {
+      await Future.wait([
+        context.read<TicketProvider>().load().catchError((_) {}),
+        context.read<FavoriteProvider>().load().catchError((_) {}),
+      ]);
+      if (!mounted) return;
+    }
+
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -75,11 +86,35 @@ class _SplashScreenState extends State<SplashScreen>
         ),
         child: Stack(
           children: [
-            // Gelombang dekoratif bawah (sesuai mockup)
-            const Positioned.fill(
-              child: CustomPaint(painter: _WavePainter()),
+            // Lingkaran dekoratif
+            Positioned(
+              top: -200,
+              right: -240,
+              child: Container(
+                width: 520,
+                height: 520,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.09),
+                  ),
+                ),
+              ),
             ),
-
+            Positioned(
+              bottom: -190,
+              left: -210,
+              child: Container(
+                width: 470,
+                height: 470,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                ),
+              ),
+            ),
             // Konten utama
             Center(
               child: FadeTransition(
@@ -89,29 +124,38 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const AjanginMark(size: 116, onDark: true),
-                      const SizedBox(height: 32),
-                      const Text(
-                        'AJANGIN',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 6,
-                        ),
+                      const EventKuyLogo(
+                        markSize: 52,
+                        fontSize: 36,
+                        onDark: true,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 26),
                       Text(
-                        'TEMUKAN. IKUTI. HADIRI.',
+                        'TEMUKAN • IKUTI • HADIRI',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 3,
+                          color: Colors.white.withValues(alpha: 0.72),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.8,
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+            ),
+            // Footer versi
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 28,
+              child: Text(
+                'Versi 1.0.0 · Mobile Event Ticketing',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 10,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
@@ -120,35 +164,4 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
-}
-
-/// Gelombang berlapis di bagian bawah splash.
-class _WavePainter extends CustomPainter {
-  const _WavePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final baseY = h * 0.78;
-
-    void wave(double y, double amp, double phase, Color color) {
-      final path = Path()..moveTo(0, y);
-      path.quadraticBezierTo(
-        w * 0.25, y - amp * 2.2, w * 0.5, y - amp);
-      path.cubicTo(
-        w * 0.68, y + amp * 0.7, w * 0.82, y - amp * 1.4, w, y - amp * 0.2);
-      path.lineTo(w, h);
-      path.lineTo(0, h);
-      path.close();
-      canvas.drawPath(path, Paint()..color = color);
-    }
-
-    wave(baseY + 40, 26, 0, const Color(0xFF3B42A8).withValues(alpha: 0.55));
-    wave(baseY + 78, 30, 1, const Color(0xFF4F46E5).withValues(alpha: 0.65));
-    wave(baseY + 122, 24, 2, const Color(0xFF6D5CF0).withValues(alpha: 0.85));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

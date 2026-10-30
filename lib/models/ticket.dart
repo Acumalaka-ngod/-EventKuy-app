@@ -1,8 +1,8 @@
-/// Model Ticket — mirror tabel `tickets` Laravel.
+/// Model Ticket — mirror tabel `public.tickets` di Supabase.
 /// status: pending | paid | checked_in
 class Ticket {
   final String code;
-  final int eventId;
+  final String eventId;
   final String eventTitle;
   final String status;
 
@@ -25,7 +25,7 @@ class Ticket {
   factory Ticket.fromJson(Map<String, dynamic> json) {
     return Ticket(
       code: json['code'] as String,
-      eventId: json['event_id'] as int,
+      eventId: json['event_id'].toString(),
       eventTitle: json['event_title'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
     );

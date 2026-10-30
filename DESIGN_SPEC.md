@@ -1,4 +1,4 @@
-# AJANGIN — Design Spec (Handoff UI/UX)
+# EVENTKUY — Design Spec (Handoff UI/UX)
 
 > Versi dokumen: 1.0 · Status: **siap redesign total** · Platform: Flutter (Android utama, tablet/desktop/web didukung)
 
@@ -6,7 +6,7 @@
 
 ## 0. Cara Pakai Dokumen Ini
 
-Dokumen ini adalah **acuan fungsi, menu, konten, alur, dan kebutuhan teknis** aplikasi AjangIn.
+Dokumen ini adalah **acuan fungsi, menu, konten, alur, dan kebutuhan teknis** aplikasi EventKuy.
 
 - **Bebas diubah oleh desainer (redesign total):** warna, tipografi, bentuk komponen, ilustrasi, ikonografi, gaya visual secara keseluruhan.
 - **Wajib dipertahankan:** struktur 5 tab navigasi, 13 tampilan beserta alur antarlayar, semua *state* (loading, kosong, sukses, gagal), konten minimum per layar, dan persyaratan responsif (Bagian 7).
@@ -18,7 +18,7 @@ Dokumen ini adalah **acuan fungsi, menu, konten, alur, dan kebutuhan teknis** ap
 
 | Item | Detail |
 |---|---|
-| Nama | **AjangIn** |
+| Nama | **EventKuy** |
 | Tagline | **Temukan • Ikuti • Hadiri** |
 | Deskripsi | Aplikasi event discovery & e-ticketing: konser musik, seminar, workshop, event olahraga |
 | Target pengguna | 18–35 tahun, urban, aktif mencari hiburan & pengembangan diri |
@@ -70,7 +70,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 **Tujuan:** branding singkat saat membuka aplikasi (tampil ±2 detik), lalu otomatis mengarahkan ke Beranda (jika sudah pernah login) atau Login.
 
 **Konten wajib:**
-- Logo aplikasi (besar, center) + wordmark **AJANGIN**
+- Logo aplikasi (besar, center) + wordmark **EVENTKUY**
 - Tagline "TEMUKAN • IKUTI • HADIRI"
 - Teks versi: "Versi 1.0.0 • Mobile Event Ticketing"
 
@@ -131,9 +131,9 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 | 4 | Profil | orang | — |
 
 **Perilaku responsif (wajib):**
-- **HP (<600px):** bottom navigation bar, ikon + label, item aktif diberi highlight pill
-- **Tablet (600–1024px):** navigation rail vertikal kiri dengan label
-- **Desktop (>1024px):** sidebar penuh (lebar 240px) berisi logo + nama app "AJANGIN", 5 item menu berlabel + badge angka, footer teks versi "AjangIn v1.0.0 • Temukan. Ikuti. Hadiri."
+- **HP (<720px):** bottom navigation bar floating, ikon + label, item aktif diberi highlight pill
+- **Tablet (720–1100px):** navigation rail vertikal kiri dengan label
+- **Desktop (>1100px):** sidebar penuh (lebar 240px) berisi logo + nama app "EVENTKUY", 5 item menu berlabel + badge angka, footer teks versi "EventKuy v1.0.0 • Temukan. Ikuti. Hadiri."
 
 **Badge:** bulatan merah dengan angka (maks "9+") di atas ikon.
 
@@ -183,7 +183,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 - Judul "Tiket & Pass Saya"
 - **3 tab filter:** Semua / Aktif / Selesai (dengan angka)
 - **Kartu E-Ticket bergaya boarding pass** (lihat Bagian 4 — TicketItem):
-  - Header: label "AJANGIN PASS", badge status **TIKET AKTIF** / **SUDAH CHECK-IN**, judul event, jadwal + ikon jam
+  - Header: label "EVENTKUY PASS", badge status **TIKET AKTIF** / **SUDAH CHECK-IN**, judul event, jadwal + ikon jam
   - Garis perforasi putus-putus + lekukan (cutout) kiri-kanan seperti tiket fisik
   - **QR code** (fungsi asli, bisa dipindai), kode teks "TICKET ID: AJG-…"
   - Tombol **"Simulasi Scan Check-in"** — setelah check-in berubah menjadi panel hijau "Tiket Telah Digunakan"
@@ -213,7 +213,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 **Konten wajib:**
 - Judul "Profil Saya" + ikon pengaturan (kanan atas)
-- **Kartu profil:** avatar inisial besar (dengan tombol ganti foto overlay), nama, email, badge **"Member Prioritas AjangIn"** (ikon mahkota/medali)
+- **Kartu profil:** avatar inisial besar (dengan tombol ganti foto overlay), nama, email, badge **"Member Prioritas EventKuy"** (ikon mahkota/medali)
 - **3 kartu statistik:** Tiket Saya (jumlah) · Favorit (jumlah) · Poin Reward (contoh: 1.250) — masing-masing dengan ikon berwarna
 - **Grup "Akun & Aktivitas":** Edit Informasi Profil · Riwayat Pesanan & Transaksi · Metode Pembayaran Tersimpan
 - **Grup "Bantuan & Pusat Informasi":** Pusat Bantuan & FAQ · Hubungi Customer Care · Ketentuan Layanan & Privasi
@@ -330,7 +330,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 | UI/UX Design Workshop | Workshop | Rp 200.000 | GoWork Chubb Square, Jl. M.H. Thamrin No. 10, Jakarta Pusat |
 | Digital Marketing Summit | Seminar | Rp 350.000 | Gedung Merdeka, Jl. Asia Afrika No. 65, Bandung |
 
-**Data lain:** user demo "Andi Pratama / andi@ajangin.id" · voucher `AJANGSERU` & `DISKON10` (diskon Rp 25.000) · biaya layanan Rp 2.500 · status tiket: `pending` / `paid` / `checked_in` · poin reward contoh "1.250".
+**Data lain:** user demo "Andi Pratama / andi@eventkuy.id" · voucher `EVENTKUY` & `DISKON10` (diskon Rp 25.000) · biaya layanan Rp 2.500 · status tiket: `pending` / `paid` / `checked_in` · poin reward contoh "1.250".
 
 ---
 
@@ -393,4 +393,4 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 ---
 
-*Dokumen ini dibuat dari kondisi kode aplikasi AjangIn v1.0.0. Pertanyaan teknis implementasi: `lib/core/theme.dart` (tema), `lib/core/responsive.dart` (breakpoint), `lib/screens/` (layar).*
+*Dokumen ini dibuat dari kondisi kode aplikasi EventKuy v1.0.0. Pertanyaan teknis implementasi: `lib/core/theme.dart` (tema), `lib/core/responsive.dart` (breakpoint), `lib/screens/` (layar).*

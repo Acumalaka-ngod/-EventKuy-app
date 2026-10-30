@@ -1,161 +1,350 @@
 import 'package:flutter/material.dart';
 
-/// Tema AjangIn — Desain Baru (bersih, putih, indigo).
-/// Mengikuti mockup: latar putih, kartu ber-border halus, aksen Indigo.
+/// Tema EventKuy.
+///
+/// Arah: "program acara cetak" — kertas hangat, tinta hampir hitam, satu aksen
+/// vermilion, dan garis rambut sebagai pemisah. Gradien dekoratif dan shadow
+/// lebar sudah dihapus; kedalaman dibentuk oleh border 1px, bukan glow.
+///
+/// Nama token lama (`violet`, `violetDark`, `violetSoft`) sengaja dipertahankan
+/// supaya seluruh pemanggil lama tetap jalan tanpa diubah.
 class AppTheme {
-  // Palet Warna Utama
-  static const Color primary = Color(0xFF4338CA); // Indigo 700
-  static const Color primaryDark = Color(0xFF312E81); // Indigo 900
-  static const Color primaryLight = Color(0xFFEEF0FF); // Indigo soft
-  static const Color secondary = Color(0xFFEF4466); // Coral / Red
-  static const Color accentAmber = Color(0xFFF59E0B); // Amber
-  static const Color accentEmerald = Color(0xFF10B981); // Emerald
-  static const Color navy = Color(0xFF0F172A); // Slate 900
-  static const Color background = Color(0xFFFFFFFF); // Putih bersih
-  static const Color card = Colors.white;
-  static const Color border = Color(0xFFE9EAF0); // Border kartu halus
-  static const Color field = Color(0xFFF4F4F7); // Isian input abu terang
-  static const Color textDark = Color(0xFF111827);
-  static const Color textMuted = Color(0xFF6B7280);
-  static const Color textGrey = Color(0xFF9CA3AF);
-  static const Color chipSelected = Color(0xFF4338CA);
+  AppTheme._();
 
-  // Gradien
+  // ── Font ────────────────────────────────────────────────────────────
+  static const String headingFont = 'Manrope';
+  static const String bodyFont = 'DMSans';
+
+  // ── Palet utama ─────────────────────────────────────────────────────
+  static const Color ink = Color(0xFF161310);
+  static const Color muted = Color(0xFF6D665B);
+  static const Color violet = Color(0xFFC63C14);
+  static const Color violetDark = Color(0xFF8F2A0D);
+  static const Color violetSoft = Color(0xFFFAE7DF);
+  static const Color coral = Color(0xFFC63C14);
+  static const Color green = Color(0xFF1B7A5B);
+  static const Color greenSoft = Color(0xFFE7F3EE);
+  static const Color red = Color(0xFFB3261E);
+  static const Color redSoft = Color(0xFFFBEAE7);
+  static const Color amber = Color(0xFFA96F12);
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color canvas = Color(0xFFF4F1E8);
+  static const Color fieldBg = Color(0xFFFBF8F1);
+  static const Color textFaint = Color(0xFF9A9387);
+
+  // ── Alias kompatibel dengan kode lama ──────────────────────────────
+  static const Color primary = violet;
+  static const Color primaryDark = violetDark;
+  static const Color primaryLight = violetSoft;
+  static const Color secondary = coral;
+  static const Color accentAmber = amber;
+  static const Color accentEmerald = green;
+  static const Color navy = ink;
+  static const Color background = canvas;
+  static const Color card = surface;
+  static const Color border = Color(0xFFE3DCCF);
+  static const Color field = fieldBg;
+  static const Color textDark = ink;
+  static const Color textMuted = muted;
+  static const Color textGrey = textFaint;
+  static const Color chipSelected = ink;
+
+  // ── Radius ──────────────────────────────────────────────────────────
+  static const double radiusButton = 8;
+  static const double radiusField = 8;
+  static const double radiusCard = 12;
+  static const double radiusPanel = 14;
+  static const double radiusHero = 12;
+
+  // ── Shadow ──────────────────────────────────────────────────────────
+  /// Shadow kartu: setipis garis, bukan glow.
+  static const List<BoxShadow> cardShadow = [
+    BoxShadow(
+      color: Color(0x0A161310),
+      blurRadius: 2,
+      offset: Offset(0, 1),
+    ),
+  ];
+
+  static const List<BoxShadow> softShadow = [
+    BoxShadow(
+      color: Color(0x06161310),
+      blurRadius: 2,
+      offset: Offset(0, 1),
+    ),
+  ];
+
+  /// Tombol tidak lagi memakai shadow.
+  static const List<BoxShadow> buttonShadow = [];
+
+  /// Logo tidak lagi memakai shadow.
+  static const List<BoxShadow> logoShadow = [];
+
+  // ── Isian datar (pengganti gradien dekoratif) ───────────────────────
+  /// Tombol primary — tinta pekat, bukan gradien.
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF4338CA), Color(0xFF7C3AED)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
+    colors: [ink, ink],
   );
 
+  /// Logo mark — vermilion datar.
+  static const LinearGradient logoGradient = LinearGradient(
+    colors: [violet, violet],
+  );
+
+  /// Scrim foto hero detail (fungsional, untuk keterbacaan teks).
   static const LinearGradient heroGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      Colors.transparent,
-      Color(0x22000000),
-      Color(0xCC0B1020),
+      Color(0x00161310),
+      Color(0x00161310),
+      Color(0xB3161310),
     ],
-    stops: [0.35, 0.6, 1.0],
+    stops: [0.0, 0.45, 1.0],
   );
 
-  /// Gradien tiket: indigo → ungu → magenta → oranye (sesuai mockup e-ticket).
+  /// Header kartu e-tiket — blok tinta penuh.
   static const LinearGradient ticketGradient = LinearGradient(
-    colors: [
-      Color(0xFF4338CA),
-      Color(0xFF7C3AED),
-      Color(0xFFD946EF),
-      Color(0xFFFB923C),
-    ],
-    stops: [0.0, 0.4, 0.72, 1.0],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
+    colors: [ink, ink],
   );
 
-  /// Gradien splash & branding (navy dalam).
+  /// Splash — tinta penuh.
   static const LinearGradient splashGradient = LinearGradient(
-    colors: [Color(0xFF171D4B), Color(0xFF232A6B), Color(0xFF2E3480)],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
+    colors: [ink, ink],
   );
 
+  /// Kartu profil — tinta penuh.
+  static const LinearGradient profileGradient = LinearGradient(
+    colors: [ink, ink],
+  );
+
+  /// Panel branding halaman auth — tinta penuh.
+  static const LinearGradient authBrandGradient = LinearGradient(
+    colors: [ink, ink],
+  );
+
+  /// Avatar profil — vermilion datar.
+  static const LinearGradient avatarGradient = LinearGradient(
+    colors: [violet, violet],
+  );
+
+  // ── Teks ────────────────────────────────────────────────────────────
+  static TextStyle get h1 => const TextStyle(
+        fontFamily: headingFont,
+        fontSize: 34,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1.2,
+        height: 1.12,
+        color: ink,
+      );
+
+  static TextStyle get h2 => const TextStyle(
+        fontFamily: headingFont,
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.6,
+        height: 1.2,
+        color: ink,
+      );
+
+  static TextStyle get h3 => const TextStyle(
+        fontFamily: headingFont,
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.3,
+        color: ink,
+      );
+
+  /// Label kecil di atas judul. Dulu berwarna aksen; sekarang tinta redup
+  /// supaya tidak bersaing dengan judul.
+  static const TextStyle eyebrow = TextStyle(
+    fontFamily: bodyFont,
+    fontSize: 10.5,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.2,
+    color: muted,
+  );
+
+  static const TextStyle body = TextStyle(
+    fontFamily: bodyFont,
+    fontSize: 14,
+    height: 1.6,
+    color: ink,
+  );
+
+  static const TextStyle bodyMuted = TextStyle(
+    fontFamily: bodyFont,
+    fontSize: 13,
+    height: 1.55,
+    color: muted,
+  );
+
+  // ── ThemeData ───────────────────────────────────────────────────────
   static ThemeData light() {
-    return ThemeData(
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: violet,
+      primary: violet,
+      onPrimary: Colors.white,
+      secondary: ink,
+      onSecondary: Colors.white,
+      surface: surface,
+      onSurface: ink,
+      error: red,
+    );
+
+    final base = ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: background,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        primary: primary,
-        secondary: secondary,
-        surface: card,
-      ),
-      fontFamily: null,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: canvas,
+      fontFamily: bodyFont,
+      splashFactory: InkRipple.splashFactory,
+    );
+
+    return base.copyWith(
+      textTheme: base.textTheme
+          .apply(fontFamily: bodyFont, bodyColor: ink, displayColor: ink)
+          .copyWith(
+            displayLarge: h1,
+            displayMedium: h1,
+            displaySmall: h2,
+            headlineLarge: h1,
+            headlineMedium: h2,
+            headlineSmall: h2,
+            titleLarge: h2,
+            titleMedium: h3,
+            titleSmall: const TextStyle(
+              fontFamily: headingFont,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: ink,
+            ),
+            labelLarge: const TextStyle(
+              fontFamily: bodyFont,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: ink,
+            ),
+          ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
+        backgroundColor: canvas,
         surfaceTintColor: Colors.transparent,
-        foregroundColor: textDark,
+        foregroundColor: ink,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleSpacing: 4,
         titleTextStyle: TextStyle(
-          color: textDark,
+          fontFamily: headingFont,
+          color: ink,
           fontSize: 17,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.3,
         ),
+        iconTheme: IconThemeData(color: ink, size: 22),
       ),
       cardTheme: CardThemeData(
-        color: card,
+        color: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusCard),
           side: const BorderSide(color: border, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: Colors.white,
-        selectedColor: primary,
-        labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+        backgroundColor: surface,
+        selectedColor: ink,
+        labelStyle: const TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+        ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(radiusButton),
           side: const BorderSide(color: border),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: field,
-        hintStyle: const TextStyle(color: textGrey, fontSize: 13.5),
-        labelStyle: const TextStyle(color: textMuted, fontSize: 13),
-        floatingLabelStyle: const TextStyle(color: textMuted, fontSize: 12.5),
+        fillColor: fieldBg,
+        hintStyle: const TextStyle(
+          fontFamily: bodyFont,
+          color: textFaint,
+          fontSize: 13.5,
+        ),
+        labelStyle: const TextStyle(
+          fontFamily: bodyFont,
+          color: textMuted,
+          fontSize: 13,
+        ),
+        floatingLabelStyle: const TextStyle(
+          fontFamily: bodyFont,
+          color: ink,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+        ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(radiusField),
+          borderSide: const BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(radiusField),
+          borderSide: const BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primary, width: 1.4),
+          borderRadius: BorderRadius.circular(radiusField),
+          borderSide: const BorderSide(color: ink, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: secondary),
+          borderRadius: BorderRadius.circular(radiusField),
+          borderSide: const BorderSide(color: red),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
+          backgroundColor: ink,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size(double.infinity, 52),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          minimumSize: const Size(double.infinity, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
           textStyle: const TextStyle(
-            fontSize: 15,
+            fontFamily: bodyFont,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusButton),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: const BorderSide(color: border, width: 1.2),
-          minimumSize: const Size(double.infinity, 50),
+          foregroundColor: ink,
+          backgroundColor: surface,
+          side: const BorderSide(color: border, width: 1),
+          minimumSize: const Size(double.infinity, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusButton),
           ),
           textStyle: const TextStyle(
-            fontSize: 14.5,
+            fontFamily: bodyFont,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: violetDark,
+          textStyle: const TextStyle(
+            fontFamily: bodyFont,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -163,6 +352,49 @@ class AppTheme {
         color: border,
         thickness: 1,
         space: 1,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: ink,
+        contentTextStyle: const TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 13,
+          color: Colors.white,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusButton),
+        ),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: ink,
+        unselectedLabelColor: muted,
+        indicatorColor: violet,
+        dividerColor: border,
+        labelStyle: TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontFamily: bodyFont,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? ink
+              : Colors.transparent,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(3),
+        ),
+        side: const BorderSide(color: border, width: 1.4),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: ink,
+        foregroundColor: Colors.white,
       ),
     );
   }

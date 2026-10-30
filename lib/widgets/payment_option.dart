@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 
-/// Baris metode pembayaran — kotak abu terang dengan radio di kanan.
+/// Baris metode pembayaran — avatar huruf gelap, border violet saat aktif.
 class PaymentOption extends StatelessWidget {
   final String label;
   final String? subtitle;
-  final IconData icon;
-  final Color? iconColor;
+  final String? avatar;
   final bool selected;
   final VoidCallback onTap;
 
@@ -14,28 +13,26 @@ class PaymentOption extends StatelessWidget {
     super.key,
     required this.label,
     this.subtitle,
-    required this.icon,
-    this.iconColor,
+    this.avatar,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? AppTheme.primary;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
+        constraints: const BoxConstraints(minHeight: 72),
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: AppTheme.field,
-          borderRadius: BorderRadius.circular(12),
+          color: selected ? const Color(0xFFFBFAFF) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? AppTheme.primary : Colors.transparent,
-            width: 1.4,
+            color: selected ? AppTheme.violet : AppTheme.border,
+            width: selected ? 2 : 1,
           ),
         ),
         child: Row(
@@ -44,43 +41,64 @@ class PaymentOption extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+                color: AppTheme.ink,
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, color: color, size: 20),
+              alignment: Alignment.center,
+              child: Text(
+                avatar ?? label.characters.first.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 13),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: AppTheme.textDark,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      color: AppTheme.ink,
                     ),
                   ),
                   if (subtitle != null) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 11.5,
-                        color: AppTheme.textMuted,
+                        fontSize: 10.5,
+                        color: AppTheme.muted,
                       ),
                     ),
                   ],
                 ],
               ),
             ),
-            Icon(
-              selected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-              size: 21,
-              color: selected ? AppTheme.primary : AppTheme.textGrey,
+            Container(
+              width: 21,
+              height: 21,
+              decoration: BoxDecoration(
+                color: selected ? AppTheme.violet : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? AppTheme.violet : AppTheme.border,
+                ),
+              ),
+              child: selected
+                  ? const Icon(Icons.check_rounded,
+                      size: 13, color: Colors.white)
+                  : null,
             ),
           ],
         ),

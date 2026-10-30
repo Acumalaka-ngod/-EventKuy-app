@@ -27,10 +27,11 @@ class SectionHeader extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 17,
+                  fontFamily: AppTheme.headingFont,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.textDark,
-                  letterSpacing: -0.3,
+                  color: AppTheme.ink,
+                  letterSpacing: -0.5,
                 ),
               ),
               if (subtitle != null) ...[
@@ -40,8 +41,8 @@ class SectionHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textMuted,
+                    fontSize: 13,
+                    color: AppTheme.muted,
                   ),
                 ),
               ],
@@ -49,19 +50,27 @@ class SectionHeader extends StatelessWidget {
           ),
         ),
         if (onSeeAll != null)
-          InkWell(
-            onTap: onSeeAll,
-            borderRadius: BorderRadius.circular(8),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Text(
-                'Lihat Semua',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.primary,
+          TextButton(
+            onPressed: onSeeAll,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.violet,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              minimumSize: const Size(0, 36),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Lihat Semua',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
+                SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, size: 16),
+              ],
             ),
           ),
       ],

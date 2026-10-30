@@ -50,3 +50,13 @@ app.*.map.json
 # Artefak build lokal (Gradle)
 android/**/build/
 
+# Kredensial lokal Supabase (jangan commit)
+.env
+.env.*
+!.env.example
+supabase.local.json
+
+# Berkas sementara Microsoft Word (~$nama.docx)
+~$*
+*.tmp.docx
+

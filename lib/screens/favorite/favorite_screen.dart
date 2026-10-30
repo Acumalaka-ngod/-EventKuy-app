@@ -8,9 +8,6 @@ import '../../widgets/event_card.dart';
 import '../event/event_detail_screen.dart';
 import '../main_navigation.dart';
 
-/// Layar Favorit — Responsif:
-/// - Mobile (<600)     : daftar vertikal (EventCard)
-/// - Tablet/Desktop    : grid poster 3-4 kolom (EventGridCard)
 class FavoriteScreen extends StatelessWidget {
   const FavoriteScreen({super.key});
 
@@ -21,158 +18,195 @@ class FavoriteScreen extends StatelessWidget {
     final list = events.where((e) => fav.isFav(e.id)).toList();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('Event Tersimpan'),
-        leading: Navigator.canPop(context) ? const BackButton() : null,
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          final isWide = w >= Breakpoints.mobile;
-          final columns = eventGridColumns(w);
+      backgroundColor: AppTheme.canvas,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final columns = eventGridColumns(w);
+            final hPadding = contentPadding(w);
 
-          if (list.isEmpty) return _buildEmptyState(context);
-
-          return ConstrainedContent(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      contentPadding(w), 8, contentPadding(w), 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${list.length} Event Disimpan',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textDark,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          for (final e in list) {
-                            fav.toggle(e.id);
-                          }
-                        },
-                        child: const Text('Hapus Semua',
-                            style: TextStyle(
-                                color: AppTheme.secondary, fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: isWide
-                      ? GridView.builder(
-                          padding: EdgeInsets.fromLTRB(contentPadding(w), 8,
-                              contentPadding(w), 24),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columns,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                            childAspectRatio: eventGridAspect(w),
-                          ),
-                          itemCount: list.length,
-                          itemBuilder: (_, i) => EventGridCard(
-                            event: list[i],
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    EventDetailScreen(event: list[i]),
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: EdgeInsets.fromLTRB(contentPadding(w), 8,
-                              contentPadding(w), 24),
-                          itemCount: list.length,
-                          itemBuilder: (_, i) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: EventCard(
-                              event: list[i],
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      EventDetailScreen(event: list[i]),
+            return ConstrainedContent(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: hPadding),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Event Tersimpan',
+                                style: TextStyle(
+                                  fontFamily: AppTheme.headingFont,
+                                  fontSize: w < Breakpoints.mobile ? 30 : 36,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -1.2,
+                                  color: AppTheme.ink,
+                                  height: 1.1,
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                        if (Navigator.canPop(context))
+                          _roundButton(
+                            icon: Icons.arrow_back_rounded,
+                            onTap: () => Navigator.pop(context),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (list.isEmpty)
+                    Expanded(child: _buildEmptyState(context))
+                  else ...[
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: hPadding),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${list.length} Event Disimpan',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.ink,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              for (final e in list) {
+                                fav.toggle(e.id);
+                              }
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.red,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            child: const Text(
+                              'Hapus Semua',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: GridView.builder(
+                        padding: EdgeInsets.fromLTRB(hPadding, 2, hPadding, 40),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 18,
+                          mainAxisSpacing: 18,
+                          childAspectRatio: eventGridAspect(w),
+                        ),
+                        itemCount: list.length,
+                        itemBuilder: (_, i) => EventGridCard(
+                          event: list[i],
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EventDetailScreen(event: list[i]),
                             ),
                           ),
                         ),
-                ),
-              ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _roundButton({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.ink.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          );
-        },
+          ],
+        ),
+        child: Icon(icon, color: AppTheme.ink, size: 22),
       ),
     );
   }
 
   Widget _buildEmptyState(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                color: AppTheme.secondary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                color: AppTheme.violetSoft,
+                borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
                 Icons.favorite_rounded,
-                size: 40,
-                color: AppTheme.secondary,
+                size: 50,
+                color: AppTheme.violet,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 32),
             const Text(
-              'Belum Ada Event Favorit',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Simpan event impianmu dengan menekan ikon bookmark atau hati di halaman Beranda & Jelajahi.',
+              'Belum Ada Favorit',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
-                color: AppTheme.textMuted,
-                height: 1.4,
+                fontFamily: AppTheme.headingFont,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.ink,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            const Text(
+              'Simpan event yang kamu sukai agar tidak ketinggalan informasi terbarunya.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.muted,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const MainNavigation(initialIndex: 1),
-                  ),
+                  MaterialPageRoute(builder: (_) => const MainNavigation(initialIndex: 1)),
                   (_) => false,
                 );
               },
-              icon: const Icon(Icons.explore_rounded, size: 18),
+              icon: const Icon(Icons.explore_rounded, size: 20),
               label: const Text('Jelajahi Event'),
               style: ElevatedButton.styleFrom(
-                minimumSize: const Size(180, 44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                minimumSize: const Size(220, 54),
               ),
             ),
           ],

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:ajangin/core/responsive.dart';
-import 'package:ajangin/models/event.dart';
-import 'package:ajangin/providers/favorite_provider.dart';
-import 'package:ajangin/widgets/event_card.dart';
+import 'package:eventkuy/core/responsive.dart';
+import 'package:eventkuy/models/event.dart';
+import 'package:eventkuy/providers/favorite_provider.dart';
+import 'package:eventkuy/services/mock_api_service.dart';
+import 'package:eventkuy/widgets/event_card.dart';
 
 final _event = Event(
-  id: 1,
+  id: '11111111-1111-4111-8111-000000000001',
   title: 'Sound of Tomorrow',
   description: 'Festival musik terbesar tahun ini.',
   date: DateTime(2025, 7, 12),
@@ -38,7 +39,7 @@ void main() {
         final w = size.width;
         await tester.pumpWidget(
           ChangeNotifierProvider(
-            create: (_) => FavoriteProvider(),
+            create: (_) => FavoriteProvider(api: MockApiService()),
             child: MaterialApp(
               home: Scaffold(
                 body: ConstrainedContent(

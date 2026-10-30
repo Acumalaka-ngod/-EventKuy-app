@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 
-/// Chip filter kategori (pill) — dipakai di Jelajahi.
+/// Chip filter kategori — dipakai di Jelajahi.
+/// Sudut kecil (bukan pill), dan state aktif memakai tinta pekat.
 class CategoryChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -21,13 +22,14 @@ class CategoryChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        duration: const Duration(milliseconds: 160),
+        constraints: const BoxConstraints(minHeight: 38),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primary : Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          color: selected ? AppTheme.ink : AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusButton),
           border: Border.all(
-            color: selected ? AppTheme.primary : AppTheme.border,
+            color: selected ? AppTheme.ink : AppTheme.border,
             width: 1,
           ),
         ),
@@ -38,16 +40,21 @@ class CategoryChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 14,
-                color: selected ? Colors.white : AppTheme.textMuted,
+                color: selected ? Colors.white : AppTheme.muted,
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 6),
             ],
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : AppTheme.textMuted,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                fontSize: 12.5,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AppTheme.bodyFont,
+                  color: selected ? Colors.white : AppTheme.ink,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                ),
               ),
             ),
           ],
@@ -57,58 +64,51 @@ class CategoryChip extends StatelessWidget {
   }
 }
 
-/// Ikon kategori berbentuk kotak membulat + label (dipakai di Beranda).
+/// Tab kategori di Beranda: label teks dengan garis bawah saat aktif.
+///
+/// Dulu tiap kategori berupa kotak ikon berwarna + label — pola kartu ikon
+/// yang membuat baris ini terlihat seperti template.
 class CategoryIconItem extends StatelessWidget {
-  final IconData icon;
   final String label;
-  final Color bg;
-  final Color? iconColor;
   final bool selected;
   final VoidCallback onTap;
 
   const CategoryIconItem({
     super.key,
-    required this.icon,
     required this.label,
-    required this.bg,
     required this.selected,
     required this.onTap,
-    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.primary : bg,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              icon,
-              size: 24,
-              color: selected
-                  ? Colors.white
-                  : (iconColor ?? AppTheme.textDark),
-            ),
-          ),
-          const SizedBox(height: 7),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              color: selected ? AppTheme.primary : AppTheme.textMuted,
+              fontFamily: AppTheme.headingFont,
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              letterSpacing: -0.1,
+              color: selected ? AppTheme.ink : AppTheme.muted,
+            ),
+          ),
+          const SizedBox(height: 7),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            height: 2,
+            width: selected ? 22 : 0,
+            decoration: BoxDecoration(
+              color: selected ? AppTheme.violet : Colors.transparent,
+              borderRadius: BorderRadius.circular(1),
             ),
           ),
         ],

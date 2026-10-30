@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Breakpoint global AjangIn:
-/// - Mobile  : lebar < 600
-/// - Tablet  : 600 - 1024
-/// - Desktop : > 1024
+/// Breakpoint global EventKuy (mengikuti prototipe Figma):
+/// - Mobile  : lebar <= 720  (bottom bar mengambang)
+/// - Tablet  : 720 - 1100    (rail ikon 88px)
+/// - Desktop : > 1100        (sidebar 240px)
 class Breakpoints {
-  static const double mobile = 600;
-  static const double tablet = 1024;
+  static const double mobile = 720;
+  static const double tablet = 1100;
 
   /// Lebar maksimal konten agar tetap nyaman di layar besar.
   static const double contentMaxWidth = 1200;
@@ -59,16 +59,16 @@ int eventGridColumns(double width) {
   return 4;
 }
 
-/// Rasio kartu grid agar konten tidak overflow di tiap ukuran layar.
+/// Rasio kartu grid agar foto + info pas di tiap ukuran layar.
 double eventGridAspect(double width) {
-  if (width < Breakpoints.mobile) return 0.72;
-  if (width < Breakpoints.tablet) return 0.9;
-  return 1.08;
+  if (width < Breakpoints.mobile) return 0.60;
+  if (width < Breakpoints.tablet) return 0.82;
+  return 0.90;
 }
 
 /// Padding horizontal konten adaptif.
 double contentPadding(double width) {
-  if (width < Breakpoints.mobile) return 20;
+  if (width < Breakpoints.mobile) return 18;
   if (width < Breakpoints.tablet) return 28;
   return 32;
 }

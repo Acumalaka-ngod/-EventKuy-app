@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:ajangin/main.dart';
+import 'package:eventkuy/main.dart';
 
 void main() {
-  testWidgets('AjangIn boots to splash', (WidgetTester tester) async {
-    await tester.pumpWidget(const AjangInApp());
-    expect(find.text('AJANGIN'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
-    // Setelah splash, harus masuk Login atau MainNavigation
-    expect(find.text('AJANGIN'), findsWidgets);
+  testWidgets('menampilkan panduan setup tanpa konfigurasi Supabase',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const EventKuyApp());
+
+    expect(find.text('Supabase belum dikonfigurasi'), findsOneWidget);
+    expect(find.textContaining('schema.sql'), findsOneWidget);
+    expect(find.textContaining('--dart-define'), findsOneWidget);
   });
 }

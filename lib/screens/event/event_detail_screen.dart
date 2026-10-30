@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/event.dart';
 import '../../providers/favorite_provider.dart';
+import '../../widgets/custom_button.dart';
 import '../../widgets/event_card.dart';
-import '../../widgets/event_image.dart';
+import '../../widgets/event_gallery.dart';
 import '../checkout/checkout_screen.dart';
 
-/// Layar Detail Event — sesuai desain baru:
-/// hero penuh + tombol kembali/bagikan, chip kategori + hati,
-/// judul & tagline, kartu tanggal/lokasi berdampingan, deskripsi,
-/// tagar, dan bar bawah "Mulai dari" + tombol Daftar Sekarang.
+/// Detail event EventKuy — hero foto + tombol glass, chip kategori & rating,
+/// info tanggal/lokasi, penyelenggara, tentang acara, dan buy bar di bawah.
 class EventDetailScreen extends StatefulWidget {
   final Event event;
   const EventDetailScreen({super.key, required this.event});
@@ -21,105 +21,295 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
+  void _share() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tautan event disalin ke clipboard!')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoriteProvider>();
     final isFav = fav.isFav(widget.event.id);
-    final tagline = widget.event.tags.take(2).join(', ');
+    final event = widget.event;
+    final tagline = event.tags.take(2).join(' · ');
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: CustomScrollView(
-        slivers: [
-          // === Hero ===
-          SliverAppBar(
-            expandedHeight: 280,
-            pinned: true,
-            backgroundColor: AppTheme.navy,
-            automaticallyImplyLeading: false,
-            leadingWidth: 64,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 14),
-              child: Center(
-                child: Material(
-                  color: Colors.white,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () => Navigator.pop(context),
-                    child: const SizedBox(
-                      width: 38,
-                      height: 38,
-                      child: Icon(Icons.arrow_back_rounded,
-                          color: AppTheme.navy, size: 20),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 14),
-                child: Center(
-                  child: Material(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('Tautan event disalin ke clipboard!')),
-                        );
-                      },
-                      child: const SizedBox(
-                        width: 38,
-                        height: 38,
-                        child: Icon(Icons.ios_share_rounded,
-                            color: Colors.white, size: 18),
+      backgroundColor: Colors.white,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final h = constraints.maxHeight;
+          final compact = w < Breakpoints.mobile;
+          final heroHeight = compact
+              ? (h * 0.44).clamp(340.0, 520.0).toDouble()
+              : (h * 0.57).clamp(340.0, 590.0).toDouble();
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.only(bottom: compact ? 24 : 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: heroHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      EventGallery(
+                        images: event.galleryImages,
+                        eventId: event.id,
                       ),
-                    ),
+                      SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            compact ? 18 : 28,
+                            20,
+                            compact ? 18 : 28,
+                            0,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _glassButton(
+                                icon: Icons.arrow_back_rounded,
+                                onTap: () => Navigator.pop(context),
+                              ),
+                              const Spacer(),
+                              Row(
+                                children: [
+                                  _glassButton(
+                                    icon: Icons.ios_share_rounded,
+                                    onTap: _share,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _glassButton(
+                                    icon: isFav
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                    onTap: () => fav.toggle(event.id),
+                                    active: isFav,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  EventImage(
-                    imageUrl: widget.event.imageUrl,
-                    eventId: widget.event.id,
-                    fit: BoxFit.cover,
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.35),
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.45),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 860),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        compact ? 18 : 28,
+                        compact ? 25 : 34,
+                        compact ? 18 : 28,
+                        40,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.violetSoft,
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                                child: Text(
+                                  event.category.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppTheme.violet,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              const Icon(
+                                Icons.star_rounded,
+                                color: AppTheme.amber,
+                                size: 17,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                '4.9',
+                                style: TextStyle(
+                                  color: AppTheme.amber,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Flexible(
+                                child: Text(
+                                  '(320 ulasan)',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppTheme.muted,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            event.title,
+                            style: TextStyle(
+                              fontFamily: AppTheme.headingFont,
+                              fontSize: compact ? 35 : 52,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: compact ? -1.5 : -2.6,
+                              height: 1.08,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          if (tagline.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              tagline,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.muted,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 26),
+                          _infoCard(
+                            icon: Icons.calendar_month_rounded,
+                            label: 'TANGGAL & WAKTU',
+                            title: formatTanggal(event.date),
+                            subtitle: '${event.timeRange} WIB',
+                          ),
+                          const SizedBox(height: 12),
+                          _infoCard(
+                            icon: Icons.location_on_rounded,
+                            label: 'LOKASI',
+                            title: venueOf(event.location),
+                            subtitle: event.location,
+                          ),
+                          const SizedBox(height: 26),
+                          _buildOrganizer(context),
+                          const SizedBox(height: 30),
+                          const Text(
+                            'Tentang Acara',
+                            style: TextStyle(
+                              fontFamily: AppTheme.headingFont,
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            event.description,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              color: AppTheme.muted,
+                              height: 1.7,
+                            ),
+                          ),
+                          if (event.tags.isNotEmpty) ...[
+                            const SizedBox(height: 22),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: event.tags.map((t) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0F0F5),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    t,
+                                    style: const TextStyle(
+                                      color: AppTheme.muted,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
                         ],
-                        stops: const [0.0, 0.45, 1.0],
                       ),
                     ),
                   ),
-                  Positioned(
-                    left: 16,
-                    bottom: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(20),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      bottomNavigationBar: Container(
+        key: const ValueKey('event-detail-buy-bar'),
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 860),
+              child: Row(
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Harga Tiket',
+                        style: TextStyle(color: AppTheme.muted, fontSize: 11),
                       ),
-                      child: const Text(
-                        '1/5',
-                        style: TextStyle(color: Colors.white, fontSize: 11.5),
+                      const SizedBox(height: 2),
+                      Text(
+                        formatRp(event.price),
+                        style: const TextStyle(
+                          fontFamily: AppTheme.headingFont,
+                          color: AppTheme.violetDark,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: CustomButton(
+                      label: 'Daftar & Beli Tiket',
+                      height: 56,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CheckoutScreen(event: event),
+                        ),
                       ),
                     ),
                   ),
@@ -127,221 +317,30 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
           ),
-
-          // === Konten ===
-          SliverToBoxAdapter(
-            child: ConstrainedContent(
-              maxWidth: 860,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Chip kategori + hati
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            widget.event.category,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: () => fav.toggle(widget.event.id),
-                          icon: Icon(
-                            isFav
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            color: isFav
-                                ? AppTheme.secondary
-                                : AppTheme.textMuted,
-                            size: 26,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Judul & tagline
-                    Text(
-                      widget.event.title,
-                      style: const TextStyle(
-                        fontSize: 23,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.textDark,
-                        letterSpacing: -0.5,
-                        height: 1.2,
-                      ),
-                    ),
-                    if (tagline.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        tagline,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.textMuted,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-
-                    // Kartu tanggal & lokasi berdampingan
-                    IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: _infoCard(
-                              icon: Icons.calendar_month_rounded,
-                              tint: AppTheme.primary,
-                              title: formatTanggal(widget.event.date),
-                              subtitle: '${widget.event.timeRange} WIB',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _infoCard(
-                              icon: Icons.location_on_rounded,
-                              tint: AppTheme.accentEmerald,
-                              title: venueOf(widget.event.location),
-                              subtitle: cityOf(widget.event.location),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Tentang Event
-                    const Text(
-                      'Tentang Event',
-                      style: TextStyle(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textDark,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.event.description,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textMuted,
-                        height: 1.65,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Tagar
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: widget.event.tags.map((t) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.field,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            t,
-                            style: const TextStyle(
-                              color: AppTheme.textDark,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 110),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      // === Bar bawah ===
-      bottomSheet: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(
-            top: BorderSide(color: AppTheme.border, width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
         ),
-        child: SafeArea(
-          top: false,
-          child: ConstrainedContent(
-            maxWidth: 860,
-            child: Row(
-              children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Mulai dari',
-                      style: TextStyle(
-                          color: AppTheme.textMuted, fontSize: 11.5),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      formatRp(widget.event.price),
-                      style: const TextStyle(
-                        color: AppTheme.primary,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 19,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              CheckoutScreen(event: widget.event),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Daftar Sekarang'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      ),
+    );
+  }
+
+  Widget _glassButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool active = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: active ? Colors.white : const Color(0x33000000),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Icon(
+          icon,
+          color: active ? AppTheme.coral : Colors.white,
+          size: 20,
         ),
       ),
     );
@@ -349,55 +348,137 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Widget _infoCard({
     required IconData icon,
-    required Color tint,
+    required String label,
     required String title,
     required String subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.border),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
-              color: tint.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: AppTheme.violetSoft,
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: tint, size: 19),
+            child: Icon(icon, color: AppTheme.violet, size: 21),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  label,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                    color: AppTheme.textDark,
+                    color: AppTheme.muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppTheme.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 11.5,
+                    color: AppTheme.muted,
+                    fontSize: 12.5,
+                    height: 1.5,
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrganizer(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8FB),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppTheme.ink,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: Text(
+                'E',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 15),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PENYELENGGARA',
+                  style: TextStyle(
+                    color: AppTheme.muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'EventKuy Official',
+                  style: TextStyle(
+                    color: AppTheme.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Kamu sekarang mengikuti EventKuy Official.'),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.violet,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            child: const Text(
+              'Ikuti',
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
         ],

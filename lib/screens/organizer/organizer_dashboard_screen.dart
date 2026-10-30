@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/event.dart';
+import '../../models/ticket.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
+import '../../providers/ticket_provider.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/event_image.dart';
@@ -14,14 +16,114 @@ import '../scan/scan_screen.dart';
 /// Dashboard Event Organizer — sesuai desain baru:
 /// kartu event dengan badge status, statistik peserta/check-in/terjual,
 /// dan daftar menu "Kelola Event".
-class OrganizerDashboardScreen extends StatelessWidget {
+class OrganizerDashboardScreen extends StatefulWidget {
   const OrganizerDashboardScreen({super.key});
+
+  @override
+  State<OrganizerDashboardScreen> createState() =>
+      _OrganizerDashboardScreenState();
+}
+
+class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
+  List<Ticket> _eventTickets = const [];
+  String? _loadedEventId;
+  bool _loadingStats = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final events = context.read<EventProvider>();
+      if (events.events.isEmpty) {
+        events
+            .loadEvents()
+            .then((_) {
+              if (mounted) _loadStatsForFirstEvent();
+            })
+            .catchError((_) {});
+      } else {
+        _loadStatsForFirstEvent();
+      }
+    });
+  }
+
+  Future<void> _loadStatsForFirstEvent({bool force = false}) async {
+    if (!mounted) return;
+
+    final user = context.read<AuthProvider>().user;
+    final events = context.read<EventProvider>().events;
+    final event = _eventForUser(user?.id, events);
+    if (event == null) {
+      if (_loadedEventId != null) {
+        setState(() {
+          _eventTickets = const [];
+          _loadedEventId = null;
+          _loadingStats = false;
+        });
+      }
+      return;
+    }
+
+    final eventId = event.id;
+    if (!force && _loadedEventId == eventId) return;
+
+    setState(() => _loadingStats = true);
+    try {
+      final tickets =
+          await context.read<TicketProvider>().ticketsForEvent(eventId);
+      if (!mounted) return;
+      setState(() {
+        _eventTickets = tickets;
+        _loadedEventId = eventId;
+        _loadingStats = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _eventTickets = const [];
+        _loadingStats = false;
+      });
+    }
+  }
+
+  /// Event yang ditampilkan harus milik organizer yang sedang login.
+  /// Saat `userId` null (mis. widget test), pakai event pertama sebagai fallback.
+  Event? _eventForUser(String? userId, List<Event> events) {
+    if (events.isEmpty) return null;
+    if (userId == null) return events.first;
+    for (final event in events) {
+      if (event.organizerId == userId) return event;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final events = context.watch<EventProvider>().events;
-    final event = events.isNotEmpty ? events.first : null;
+    if (user != null && !user.isOrganizer) {
+      return Scaffold(
+        backgroundColor: AppTheme.canvas,
+        appBar: AppBar(title: const Text('Akses ditolak')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Halaman ini hanya untuk akun organizer.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+    final eventProvider = context.watch<EventProvider>();
+    final events = eventProvider.events;
+    final event = _eventForUser(user?.id, events);
+
+    if (event != null && _loadedEventId != event.id && !_loadingStats) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadStatsForFirstEvent();
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -34,7 +136,7 @@ class OrganizerDashboardScreen extends StatelessWidget {
               // Header: logo + avatar
               Row(
                 children: [
-                  const AjanginLogo(markSize: 24, fontSize: 14.5),
+                  const EventKuyLogo(markSize: 24, fontSize: 14.5),
                   const Spacer(),
                   CircleAvatar(
                     radius: 17,
@@ -80,11 +182,51 @@ class OrganizerDashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 _buildManageList(context, event),
+              ] else if (!eventProvider.loading) ...[
+                _buildNoEvent(),
               ],
               const SizedBox(height: 24),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNoEvent() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.event_busy_rounded, size: 38, color: AppTheme.textGrey),
+          SizedBox(height: 12),
+          Text(
+            'Belum ada event yang dikelola',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textDark,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Hubungkan akun organizer ke event lewat SQL Editor, '
+            'lalu buka kembali dashboard ini.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.5,
+              color: AppTheme.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -157,9 +299,12 @@ class OrganizerDashboardScreen extends StatelessWidget {
   }
 
   Widget _buildStatsRow(Event event) {
-    final sold = event.quota;
-    final attendees = (event.quota * 1.083).round();
-    final checkedIn = (event.quota * 0.947).round();
+    final sold = _eventTickets
+        .where((t) => t.status == 'paid' || t.status == 'checked_in')
+        .length;
+    final attendees = sold;
+    final checkedIn =
+        _eventTickets.where((t) => t.status == 'checked_in').length;
 
     return Row(
       children: [
@@ -290,10 +435,14 @@ class OrganizerDashboardScreen extends StatelessWidget {
             color: const Color(0xFF7C3AED),
             title: 'Scan QR Check-in',
             subtitle: 'Buka mode panitia',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ScanScreen()),
-            ),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ScanScreen()),
+              );
+              if (!mounted) return;
+              _loadStatsForFirstEvent(force: true);
+            },
           ),
         ],
       ),

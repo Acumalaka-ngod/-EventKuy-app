@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import '../core/errors.dart';
 import '../models/event.dart';
-import '../services/mock_api_service.dart';
+import '../services/api_service.dart';
+import '../services/supabase_api.dart';
 
 class EventProvider extends ChangeNotifier {
+  EventProvider({EventKuyApi? api}) : _api = api ?? SupabaseApi();
+
+  final EventKuyApi _api;
+
   List<Event> _events = [];
   bool _loading = false;
+  String? _error;
   String _query = '';
   String _category = 'Semua';
 
@@ -36,16 +43,22 @@ class EventProvider extends ChangeNotifier {
   List<Event> get nearby => _events.take(4).toList();
 
   bool get loading => _loading;
+  String? get error => _error;
   String get category => _category;
 
-  Future<void> loadEvents() async {
-    if (_events.isNotEmpty) return;
+  Future<void> loadEvents({bool force = false}) async {
+    if (_loading || (!force && _events.isNotEmpty)) return;
     _loading = true;
+    _error = null;
     notifyListeners();
-    // TODO Fase 3: ganti MockApiService -> ApiService GET /events
-    _events = await MockApiService.fetchEvents();
-    _loading = false;
-    notifyListeners();
+    try {
+      _events = await _api.fetchEvents();
+    } catch (error) {
+      _error = friendlyError(error);
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   void setQuery(String q) {

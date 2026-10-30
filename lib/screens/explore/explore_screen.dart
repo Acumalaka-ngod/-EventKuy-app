@@ -9,9 +9,6 @@ import '../../widgets/category_chip.dart';
 import '../../widgets/event_card.dart';
 import '../event/event_detail_screen.dart';
 
-/// Layar Jelajahi Event — sesuai desain baru:
-/// search, baris chip kategori, baris filter (Terbaru/Terpopuler/Lokasi),
-/// daftar kartu event. Grid di layar lebar.
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -20,10 +17,19 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  String _sort = 'Terbaru';
+  String _sort = 'Semua';
   String? _city;
 
   static const _cities = ['Jakarta', 'Bandung', 'Surabaya', 'Yogyakarta'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<EventProvider>();
+      if (provider.events.isEmpty) provider.loadEvents();
+    });
+  }
 
   void _openDetail(Event e) {
     Navigator.push(
@@ -36,49 +42,88 @@ class _ExploreScreenState extends State<ExploreScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Pilih Lokasi',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.public_rounded,
-                  color: AppTheme.textMuted),
-              title: const Text('Semua Kota'),
-              trailing: _city == null
-                  ? const Icon(Icons.check_rounded, color: AppTheme.primary)
-                  : null,
-              onTap: () {
-                setState(() => _city = null);
-                Navigator.pop(ctx);
-              },
-            ),
-            for (final c in _cities)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.location_on_rounded,
-                    color: AppTheme.primary),
-                title: Text(c),
-                trailing: _city == c
-                    ? const Icon(Icons.check_rounded,
-                        color: AppTheme.primary)
-                    : null,
-                onTap: () {
-                  setState(() => _city = c);
-                  Navigator.pop(ctx);
-                },
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Filter Lokasi',
+              style: TextStyle(
+                fontFamily: AppTheme.headingFont,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.ink,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _cityTile(ctx, 'Semua Kota', null),
+            for (final c in _cities) _cityTile(ctx, c, c),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cityTile(BuildContext ctx, String label, String? value) {
+    final active = _city == value;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: () {
+          setState(() => _city = value);
+          Navigator.pop(ctx);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: active ? AppTheme.violetSoft : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: active ? AppTheme.violet : AppTheme.border,
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                value == null ? Icons.public_rounded : Icons.location_on_rounded,
+                size: 20,
+                color: active ? AppTheme.violet : AppTheme.muted,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active ? AppTheme.violetDark : AppTheme.ink,
+                  ),
+                ),
+              ),
+              if (active)
+                const Icon(Icons.check_circle_rounded, color: AppTheme.violet, size: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -90,186 +135,293 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     var events = provider.events;
     if (_city != null) {
-      events = events
-          .where((e) => cityOf(e.location).contains(_city!))
-          .toList();
+      events = events.where((e) => cityOf(e.location).contains(_city!)).toList();
     }
     events = [...events];
-    if (_sort == 'Terbaru') {
-      events.sort((a, b) => a.date.compareTo(b.date));
-    } else if (_sort == 'Terpopuler') {
+    if (_sort == 'Terpopuler') {
       events.sort((a, b) => b.quota.compareTo(a.quota));
+    } else if (_sort == 'Terdekat' || _sort == 'Semua') {
+      events.sort((a, b) => a.date.compareTo(b.date));
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('Jelajahi Event'),
-        leading: Navigator.canPop(context) ? const BackButton() : null,
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          final isWide = w >= Breakpoints.mobile;
-          final columns = eventGridColumns(w);
+      backgroundColor: AppTheme.canvas,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final isWide = w >= Breakpoints.mobile;
+            final columns = eventGridColumns(w);
+            final hPadding = contentPadding(w);
 
-          return ConstrainedContent(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Search
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      contentPadding(w), 6, contentPadding(w), 12),
-                  child: AppSearchBar(
-                    hint: 'Cari event, kategori, atau lokasi...',
-                    onChanged: provider.setQuery,
-                  ),
-                ),
-
-                // Chip kategori
-                SizedBox(
-                  height: 38,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: contentPadding(w)),
-                    itemCount: EventProvider.categories.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(width: 8),
-                    itemBuilder: (_, i) {
-                      final c = EventProvider.categories[i];
-                      return CategoryChip(
-                        label: c,
-                        selected: provider.category == c,
-                        onTap: () => provider.setCategory(c),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Chip filter: Terbaru / Terpopuler / Lokasi
-                SizedBox(
-                  height: 38,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: contentPadding(w)),
-                    children: [
-                      CategoryChip(
-                        label: 'Terbaru',
-                        selected: _sort == 'Terbaru',
-                        onTap: () => setState(() => _sort = 'Terbaru'),
-                      ),
-                      const SizedBox(width: 8),
-                      CategoryChip(
-                        label: 'Terpopuler',
-                        selected: _sort == 'Terpopuler',
-                        onTap: () => setState(() => _sort = 'Terpopuler'),
-                      ),
-                      const SizedBox(width: 8),
-                      CategoryChip(
-                        label: _city ?? 'Lokasi',
-                        icon: Icons.keyboard_arrow_down_rounded,
-                        selected: _city != null,
-                        onTap: _showCityPicker,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Daftar event
-                Expanded(
-                  child: provider.loading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppTheme.primary,
-                          ),
-                        )
-                      : events.isEmpty
-                          ? _buildEmptyState(provider)
-                          : isWide
-                              ? GridView.builder(
-                                  padding: EdgeInsets.fromLTRB(
-                                      contentPadding(w),
-                                      2,
-                                      contentPadding(w),
-                                      24),
-                                  gridDelegate:
-                                      SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: columns,
-                                    crossAxisSpacing: 14,
-                                    mainAxisSpacing: 14,
-                                    childAspectRatio: eventGridAspect(w),
-                                  ),
-                                  itemCount: events.length,
-                                  itemBuilder: (_, i) => EventGridCard(
-                                    event: events[i],
-                                    onTap: () => _openDetail(events[i]),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: EdgeInsets.fromLTRB(
-                                      contentPadding(w),
-                                      2,
-                                      contentPadding(w),
-                                      24),
-                                  itemCount: events.length,
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(height: 10),
-                                  itemBuilder: (_, i) => EventCard(
-                                    event: events[i],
-                                    onTap: () => _openDetail(events[i]),
-                                  ),
+            return ConstrainedContent(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: hPadding),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Jelajahi Event',
+                                style: TextStyle(
+                                  fontFamily: AppTheme.headingFont,
+                                  fontSize: w < Breakpoints.mobile ? 30 : 36,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -1.2,
+                                  color: AppTheme.ink,
+                                  height: 1.1,
                                 ),
-                ),
-              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (Navigator.canPop(context))
+                          _roundButton(
+                            icon: Icons.arrow_back_rounded,
+                            onTap: () => Navigator.pop(context),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: hPadding),
+                    child: AppSearchBar(
+                      hint: 'Cari event, kategori, atau lokasi...',
+                      onChanged: provider.setQuery,
+                      onFilterTap: _showCityPicker,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 46,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.symmetric(horizontal: hPadding),
+                      itemCount: EventProvider.categories.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 10),
+                      itemBuilder: (_, i) {
+                        final c = EventProvider.categories[i];
+                        return CategoryChip(
+                          label: c,
+                          selected: provider.category == c,
+                          onTap: () => provider.setCategory(c),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: hPadding),
+                    child: _buildQuickFilter(w, events.length),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: provider.loading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: AppTheme.violet,
+                            ),
+                          )
+                        : events.isEmpty
+                            ? _buildEmptyState(provider)
+                            : isWide
+                                ? GridView.builder(
+                                    padding: EdgeInsets.fromLTRB(hPadding, 2, hPadding, 40),
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: columns,
+                                      crossAxisSpacing: 18,
+                                      mainAxisSpacing: 18,
+                                      childAspectRatio: eventGridAspect(w),
+                                    ),
+                                    itemCount: events.length,
+                                    itemBuilder: (_, i) => EventGridCard(
+                                      event: events[i],
+                                      onTap: () => _openDetail(events[i]),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    padding: EdgeInsets.fromLTRB(hPadding, 2, hPadding, 40),
+                                    itemCount: events.length,
+                                    separatorBuilder: (_, _) => const SizedBox(height: 16),
+                                    itemBuilder: (_, i) => EventCard(
+                                      event: events[i],
+                                      onTap: () => _openDetail(events[i]),
+                                    ),
+                                  ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickFilter(double width, int count) {
+    final compact = width < 420;
+    final chips = Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEEFF5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _quickItem('Semua', compact),
+          _quickItem('Terpopuler', compact),
+          _quickItem('Terdekat', compact),
+        ],
+      ),
+    );
+    final countLabel = Text(
+      '${_city == null ? '' : '$_city · '}$count event',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: compact ? TextAlign.left : TextAlign.right,
+      style: const TextStyle(
+        color: AppTheme.ink,
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: chips,
+          ),
+          const SizedBox(height: 8),
+          countLabel,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        chips,
+        const SizedBox(width: 12),
+        Expanded(child: countLabel),
+      ],
+    );
+  }
+
+  Widget _quickItem(String label, bool compact) {
+    final selected = _sort == label;
+    return GestureDetector(
+      onTap: () => setState(() => _sort = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        constraints: const BoxConstraints(minHeight: 36),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 16),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x1A140F3C),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          style: TextStyle(
+            color: selected ? AppTheme.ink : AppTheme.muted,
+            fontSize: compact ? 12 : 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _roundButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.ink.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          );
-        },
+          ],
+        ),
+        child: Icon(icon, color: AppTheme.ink, size: 22),
       ),
     );
   }
 
   Widget _buildEmptyState(EventProvider provider) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 80,
-              height: 80,
-              decoration: const BoxDecoration(
-                color: AppTheme.primaryLight,
-                shape: BoxShape.circle,
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppTheme.violetSoft,
+                borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
                 Icons.search_off_rounded,
-                size: 40,
-                color: AppTheme.primary,
+                size: 50,
+                color: AppTheme.violet,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 32),
             const Text(
-              'Tidak Ada Event Ditemukan',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Coba kata kunci lain, ganti kategori, atau pilih Semua Kota.',
+              'Event Tidak Ditemukan',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+              style: TextStyle(
+                fontFamily: AppTheme.headingFont,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.ink,
+              ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+            const Text(
+              'Coba ubah kata kunci atau filter untuk menemukan event menarik lainnya.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.muted,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
                 provider.setCategory('Semua');
@@ -277,7 +429,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 setState(() => _city = null);
               },
               style: ElevatedButton.styleFrom(
-                minimumSize: const Size(160, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                minimumSize: const Size(200, 54),
               ),
               child: const Text('Reset Pencarian'),
             ),

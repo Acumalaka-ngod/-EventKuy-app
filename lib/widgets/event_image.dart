@@ -8,7 +8,7 @@ import '../services/mock_api_service.dart';
 /// - kalau URL -> CachedNetworkImage.
 class EventImage extends StatelessWidget {
   final String imageUrl;
-  final int eventId;
+  final String eventId;
   final double? height;
   final double? width;
   final BoxFit fit;
@@ -33,6 +33,8 @@ class EventImage extends StatelessWidget {
         height: height,
         width: width,
         fit: fit,
+        cacheWidth: width != null ? (width! * 2).toInt() : null,
+        cacheHeight: height != null ? (height! * 2).toInt() : null,
         errorBuilder: (ctx, err, stack) => _fallback(),
       );
     } else if (imageUrl.startsWith('http')) {
@@ -41,6 +43,8 @@ class EventImage extends StatelessWidget {
         height: height,
         width: width,
         fit: fit,
+        memCacheWidth: width != null ? (width! * 2).toInt() : null,
+        memCacheHeight: height != null ? (height! * 2).toInt() : null,
         placeholder: (ctx, url) => Container(
           height: height,
           color: Colors.grey.shade200,
@@ -64,6 +68,8 @@ class EventImage extends StatelessWidget {
       height: height,
       width: width,
       fit: fit,
+      memCacheWidth: width != null ? (width! * 2).toInt() : null,
+      memCacheHeight: height != null ? (height! * 2).toInt() : null,
       placeholder: (ctx, url) => Container(
         height: height,
         color: Colors.grey.shade200,

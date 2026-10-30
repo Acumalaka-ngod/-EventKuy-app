@@ -1,16 +1,18 @@
-// Konfigurasi global AjangIn.
-// Ganti baseUrl saat backend Laravel production sudah online (wajib HTTPS).
+// Konfigurasi global EventKuy.
+// Nilai Supabase diisi saat run/build, contoh:
+// flutter run --dart-define=SUPABASE_URL=https://xxxx.supabase.co \
+//   --dart-define=SUPABASE_ANON_KEY=eyJ...
 class AppConfig {
-  static const String appName = 'AjangIn';
-  static const String applicationId = 'com.ajangin.app';
+  static const String appName = 'EventKuy';
+  static const String applicationId = 'com.eventkuy.app';
 
-  // TODO Fase 2: isi dengan URL VPS Laravel, contoh https://api.ajangin.id
-  static const String apiBaseUrl = 'https://api.ajangin.id/api';
-  static const Duration apiTimeout = Duration(seconds: 15);
+  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const String supabaseAnonKey =
+      String.fromEnvironment('SUPABASE_ANON_KEY');
 
-  // Catatan: lokasi event ditampilkan sebagai teks alamat lengkap (tanpa peta/Google Maps API).
+  static bool get hasSupabaseConfig =>
+      supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
-  // TODO Fase 5: isi Midtrans client key (Sandbox dulu, lalu Production)
-  static const String midtransClientKey = '';
+  // Pembayaran Midtrans masih disimulasikan lewat RPC checkout.
   static const bool midtransIsProduction = false;
 }
