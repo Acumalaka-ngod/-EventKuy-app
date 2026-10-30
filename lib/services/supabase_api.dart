@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config.dart';
 import '../models/check_in_result.dart';
+import '../models/checkout_result.dart';
 import '../models/event.dart';
 import '../models/ticket.dart';
 import '../models/voucher.dart';
@@ -32,9 +33,25 @@ class SupabaseApi implements EventKuyApi {
         .from('events')
         .select()
         .order('date', ascending: true);
-    return rows
-        .map((row) => Event.fromJson(Map<String, dynamic>.from(row)))
-        .toList(growable: false);
+
+    // Jumlah tiket terjual per event (view `event_stock`).
+    // Kalau view belum dibuat di database lama, anggap belum ada penjualan.
+    final soldByEvent = <String, int>{};
+    try {
+      final stock = await _client.from('event_stock').select('event_id, sold');
+      for (final row in stock) {
+        soldByEvent[row['event_id'].toString()] =
+            (row['sold'] as num?)?.toInt() ?? 0;
+      }
+    } catch (_) {
+      // Abaikan: stok ditampilkan sebagai "tersedia penuh".
+    }
+
+    return rows.map((row) {
+      final json = Map<String, dynamic>.from(row);
+      json['sold'] = soldByEvent[json['id'].toString()] ?? 0;
+      return Event.fromJson(json);
+    }).toList(growable: false);
   }
 
   @override
@@ -69,24 +86,20 @@ class SupabaseApi implements EventKuyApi {
   }
 
   @override
-  Future<Ticket> checkout({
+  Future<CheckoutResult> checkout({
     required String eventId,
+    int qty = 1,
     String? voucherCode,
     String paymentMethod = 'GoPay',
   }) async {
     final result = await _client.rpc('checkout', params: {
       'p_event_id': eventId,
+      'p_qty': qty,
       'p_voucher_code': voucherCode,
       'p_payment_method': paymentMethod,
     });
 
-    final data = Map<String, dynamic>.from(result as Map);
-    return Ticket(
-      code: data['ticket_code'] as String,
-      eventId: data['event_id'].toString(),
-      eventTitle: data['event_title'] as String? ?? '',
-      status: data['status'] as String? ?? 'paid',
-    );
+    return CheckoutResult.fromRpc(Map<String, dynamic>.from(result as Map));
   }
 
   @override
@@ -154,5 +167,16 @@ class SupabaseApi implements EventKuyApi {
         .maybeSingle();
     if (row == null) return null;
     return Voucher.fromJson(Map<String, dynamic>.from(row));
+  }
+
+  @override
+  Future<Set<String>> fetchUsedVoucherCodes() async {
+    final rows = await _client
+        .from('voucher_redemptions')
+        .select('code')
+        .eq('user_id', _userId);
+    return rows
+        .map((row) => row['code'].toString().toUpperCase())
+        .toSet();
   }
 }

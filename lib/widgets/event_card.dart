@@ -89,6 +89,31 @@ class _FavoriteButton extends StatelessWidget {
   }
 }
 
+/// Penanda tiket terjual habis di atas foto event.
+class _SoldOutBadge extends StatelessWidget {
+  const _SoldOutBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.ink,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Text(
+        'Tiket Habis',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
 class _CategoryBadge extends StatelessWidget {
   final String category;
 
@@ -151,6 +176,18 @@ class EventCard extends StatelessWidget {
                         imageUrl: event.imageUrl,
                         eventId: event.id,
                       ),
+                      if (event.isSoldOut) ...[
+                        Positioned.fill(
+                          child: ColoredBox(
+                            color: Colors.black.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        const Positioned(
+                          left: 10,
+                          bottom: 10,
+                          child: _SoldOutBadge(),
+                        ),
+                      ],
                       Positioned(
                         top: 10,
                         left: 10,
@@ -287,6 +324,18 @@ class EventGridCard extends StatelessWidget {
                       imageUrl: event.imageUrl,
                       eventId: event.id,
                     ),
+                    if (event.isSoldOut) ...[
+                      Positioned.fill(
+                        child: ColoredBox(
+                          color: Colors.black.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      const Positioned(
+                        left: 11,
+                        bottom: 11,
+                        child: _SoldOutBadge(),
+                      ),
+                    ],
                     Positioned(
                       top: 11,
                       left: 11,

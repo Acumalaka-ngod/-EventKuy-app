@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../models/check_in_result.dart';
+import '../models/checkout_result.dart';
 import '../models/event.dart';
 import '../models/ticket.dart';
 import '../models/voucher.dart';
@@ -143,20 +144,25 @@ class TicketProvider extends ChangeNotifier {
     _lastCheckIn = null;
   }
 
-  Future<Ticket> checkout(
+  Future<CheckoutResult> checkout(
     Event event, {
+    int qty = 1,
     String? voucherCode,
     String paymentMethod = 'GoPay',
   }) async {
-    final ticket = await _api.checkout(
+    final result = await _api.checkout(
       eventId: event.id,
+      qty: qty,
       voucherCode: voucherCode,
       paymentMethod: paymentMethod,
     );
-    _tickets.insert(0, ticket);
+    _tickets.insertAll(0, result.tickets);
     notifyListeners();
-    return ticket;
+    return result;
   }
+
+  Future<Set<String>> fetchUsedVoucherCodes() => _api.fetchUsedVoucherCodes();
+
 
   Future<CheckInResult> checkIn(String code) async {
     final result = await _api.checkIn(code);

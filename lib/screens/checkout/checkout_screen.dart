@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../../core/errors.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
+import '../../models/checkout_result.dart';
 import '../../models/event.dart';
-import '../../models/ticket.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/ticket_provider.dart';
 import '../../widgets/app_logo.dart';
@@ -32,11 +32,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   String _method = 'GoPay';
   bool _isProcessing = false;
+  int _qty = 1;
   int _discount = 0;
   String? _voucherMessage;
   bool _voucherValid = false;
   String? _appliedVoucher;
   final int _adminFee = 2500;
+
+  /// Sisa tiket; `null` berarti kuota tidak dibatasi.
+  int? get _maxQty => widget.event.available;
+
+  bool get _soldOut => widget.event.isSoldOut;
 
   @override
   void initState() {
@@ -53,6 +59,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _phone.dispose();
     _promoController.dispose();
     super.dispose();
+  }
+
+  void _changeQty(int delta) {
+    final max = _maxQty;
+    final next = _qty + delta;
+    if (next < 1) return;
+    if (max != null && next > max) return;
+    setState(() => _qty = next);
   }
 
   Future<void> _applyPromo() async {
@@ -75,12 +89,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final voucher = await context.read<TicketProvider>().fetchVoucher(code);
+      final tickets = context.read<TicketProvider>();
+      final voucher = await tickets.fetchVoucher(code);
+      if (!mounted) return;
+
+      if (voucher == null) {
+        setState(() {
+          _voucherMessage = 'Kode voucher tidak valid atau kedaluwarsa';
+        });
+        return;
+      }
+
+      // Voucher hanya boleh dipakai satu kali oleh user yang sama.
+      final used = await tickets.fetchUsedVoucherCodes();
       if (!mounted) return;
 
       setState(() {
-        if (voucher == null) {
-          _voucherMessage = 'Kode voucher tidak valid atau kedaluwarsa';
+        if (used.contains(voucher.code.toUpperCase())) {
+          _voucherMessage =
+              'Voucher ${voucher.code} sudah pernah kamu pakai. Satu voucher '
+              'hanya bisa dipakai sekali.';
         } else {
           _discount = voucher.discount;
           _voucherValid = true;
@@ -107,18 +135,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    if (_soldOut) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tiket event ini sudah habis.')),
+      );
+      return;
+    }
+
     setState(() => _isProcessing = true);
 
     try {
-      final ticket = await context.read<TicketProvider>().checkout(
+      final result = await context.read<TicketProvider>().checkout(
             widget.event,
+            qty: _qty,
             voucherCode: _voucherValid ? _appliedVoucher : null,
             paymentMethod: _method,
           );
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      _showSuccess(ticket);
+      _showSuccess(result);
     } catch (error) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
@@ -128,7 +164,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showSuccess(Ticket ticket) {
+  void _showSuccess(CheckoutResult result) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -185,7 +221,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'E-tiket untuk ${widget.event.title} sudah diterbitkan dan dikirim ke email kamu.',
+                result.qty > 1
+                    ? '${result.qty} e-tiket untuk ${widget.event.title} sudah diterbitkan dan dikirim ke email kamu.'
+                    : 'E-tiket untuk ${widget.event.title} sudah diterbitkan dan dikirim ke email kamu.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
@@ -228,7 +266,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            ticket.code,
+                            result.qty > 1
+                                ? '${result.ticket.code} (+${result.qty - 1} lainnya)'
+                                : result.ticket.code,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -267,12 +307,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final subtotal = widget.event.price;
+    final subtotal = widget.event.price * _qty;
+    final adminFee = _adminFee * _qty;
     final total =
-        (subtotal + _adminFee - _discount).clamp(0, double.infinity).toInt();
+        (subtotal + adminFee - _discount).clamp(0, double.infinity).toInt();
 
     final leftColumn = <Widget>[
       _buildSummaryCard(),
+      const SizedBox(height: 18),
+      _buildQtyCard(),
       const SizedBox(height: 18),
       _buildBuyerCard(),
       const SizedBox(height: 18),
@@ -282,7 +325,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     ];
 
     final rightColumn = <Widget>[
-      _buildTotalCard(subtotal, total),
+      _buildTotalCard(subtotal, adminFee, total),
     ];
 
     return Scaffold(
@@ -530,7 +573,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '${formatTanggalSingkat(widget.event.date)} · 1× Regular Pass',
+                  '${formatTanggalSingkat(widget.event.date)} · $_qty× Regular Pass',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -542,6 +585,91 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Pemilih jumlah tiket + info sisa stok.
+  Widget _buildQtyCard() {
+    final max = _maxQty;
+    final soldOut = _soldOut;
+    final canAdd = !soldOut && (max == null || _qty < max);
+
+    return _card(
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Jumlah Tiket',
+                  style: TextStyle(
+                    fontFamily: AppTheme.headingFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.ink,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  soldOut
+                      ? 'Tiket habis — tidak bisa dibeli'
+                      : max == null
+                          ? 'Stok tersedia'
+                          : 'Sisa $max tiket',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: soldOut ? AppTheme.red : AppTheme.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _qtyButton(
+            icon: Icons.remove_rounded,
+            onTap: soldOut || _qty <= 1 ? null : () => _changeQty(-1),
+          ),
+          SizedBox(
+            width: 44,
+            child: Text(
+              '$_qty',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: AppTheme.headingFont,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.ink,
+              ),
+            ),
+          ),
+          _qtyButton(
+            icon: Icons.add_rounded,
+            onTap: canAdd ? () => _changeQty(1) : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _qtyButton({required IconData icon, VoidCallback? onTap}) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: enabled ? Colors.white : AppTheme.canvas,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? AppTheme.ink : AppTheme.textFaint,
+        ),
       ),
     );
   }
@@ -741,7 +869,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildTotalCard(int subtotal, int total) {
+  Widget _buildTotalCard(int subtotal, int adminFee, int total) {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -762,9 +890,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _feeRow('Harga Tiket (1x)', formatRp(subtotal)),
+          _feeRow('Harga Tiket (${_qty}x)', formatRp(subtotal)),
           const SizedBox(height: 10),
-          _feeRow('Biaya Layanan', formatRp(_adminFee)),
+          _feeRow('Biaya Layanan (${_qty}x)', formatRp(adminFee)),
           if (_discount > 0) ...[
             const SizedBox(height: 10),
             _feeRow(
@@ -832,9 +960,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const SizedBox(height: 14),
           CustomButton(
-            label: 'Bayar Sekarang · ${formatRp(total)}',
+            label: _soldOut
+                ? 'Tiket Habis'
+                : 'Bayar Sekarang · ${formatRp(total)}',
             loading: _isProcessing,
-            onPressed: _processPayment,
+            onPressed: _soldOut ? null : _processPayment,
           ),
           const SizedBox(height: 12),
           const Text(

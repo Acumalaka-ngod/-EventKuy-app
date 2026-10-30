@@ -8,6 +8,9 @@ class Event {
   final String location;
   final int price;
   final int quota;
+
+  /// Jumlah tiket yang sudah terjual (dihitung server lewat view `event_stock`).
+  final int sold;
   final String imageUrl;
   final List<String> imageUrls;
   final String category;
@@ -23,6 +26,7 @@ class Event {
     required this.location,
     required this.price,
     required this.quota,
+    this.sold = 0,
     required this.imageUrl,
     this.imageUrls = const [],
     required this.category,
@@ -43,6 +47,36 @@ class Event {
     return List.unmodifiable(result);
   }
 
+  /// Sisa tiket. `null` berarti kuota tidak dibatasi.
+  int? get available {
+    if (quota <= 0) return null;
+    final sisa = quota - sold;
+    return sisa < 0 ? 0 : sisa;
+  }
+
+  /// Tiket habis terjual (kuota terbatas dan sisa 0).
+  bool get isSoldOut => available == 0;
+
+  /// Salinan event dengan jumlah terjual yang sudah diperbarui.
+  Event copyWith({int? sold}) {
+    return Event(
+      id: id,
+      organizerId: organizerId,
+      title: title,
+      description: description,
+      date: date,
+      location: location,
+      price: price,
+      quota: quota,
+      sold: sold ?? this.sold,
+      imageUrl: imageUrl,
+      imageUrls: imageUrls,
+      category: category,
+      tags: tags,
+      timeRange: timeRange,
+    );
+  }
+
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
       id: json['id'].toString(),
@@ -53,6 +87,7 @@ class Event {
       location: json['location'] as String,
       price: (json['price'] as num?)?.toInt() ?? 0,
       quota: (json['quota'] as num?)?.toInt() ?? 0,
+      sold: (json['sold'] as num?)?.toInt() ?? 0,
       imageUrl: json['image_url'] as String? ?? '',
       imageUrls: (json['image_urls'] as List?)
               ?.map((url) => url.toString())
@@ -76,6 +111,7 @@ class Event {
         'location': location,
         'price': price,
         'quota': quota,
+        'sold': sold,
         'image_url': imageUrl,
         'image_urls': imageUrls,
         'category': category,

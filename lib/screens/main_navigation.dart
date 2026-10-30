@@ -68,7 +68,14 @@ class _MainNavigationState extends State<MainNavigation> {
     ),
   ];
 
-  void _onTap(int i) => setState(() => _index = i);
+  void _onTap(int i) {
+    // Saat masuk kembali ke tab Favorit, saring ulang daftarnya supaya
+    // event yang sempat dilepas (salah pencet lalu dibiarkan) tidak menumpuk.
+    if (i == 3 && _index != 3) {
+      context.read<FavoriteProvider>().syncShelf();
+    }
+    setState(() => _index = i);
+  }
 
   int _badgeFor(int index, int ticketCount, int favCount) {
     if (index == 2) return ticketCount;

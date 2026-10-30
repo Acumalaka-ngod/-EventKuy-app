@@ -15,7 +15,8 @@ class FavoriteScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final fav = context.watch<FavoriteProvider>();
     final events = context.watch<EventProvider>().events;
-    final list = events.where((e) => fav.isFav(e.id)).toList();
+    final list = events.where((e) => fav.onShelf(e.id)).toList();
+    final activeCount = list.where((e) => fav.isFav(e.id)).length;
 
     return Scaffold(
       backgroundColor: AppTheme.canvas,
@@ -71,7 +72,7 @@ class FavoriteScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              '${list.length} Event Disimpan',
+                              '$activeCount Event Disimpan',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -80,11 +81,7 @@ class FavoriteScreen extends StatelessWidget {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {
-                              for (final e in list) {
-                                fav.toggle(e.id);
-                              }
-                            },
+                            onPressed: () => fav.clearFavorites(),
                             style: TextButton.styleFrom(
                               foregroundColor: AppTheme.red,
                               padding: const EdgeInsets.symmetric(horizontal: 12),

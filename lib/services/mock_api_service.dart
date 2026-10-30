@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../models/check_in_result.dart';
+import '../models/checkout_result.dart';
 import '../models/event.dart';
 import '../models/ticket.dart';
 import '../models/voucher.dart';
@@ -10,6 +11,7 @@ import 'api_service.dart';
 /// Aplikasi produksi memakai [SupabaseApi].
 class MockApiService implements EventKuyApi {
   final Set<String> _favorites = {};
+  final Set<String> _usedVouchers = {};
   final List<Ticket> _tickets = [];
   int _counter = 0;
   final StreamController<void> _ticketChanges =
@@ -17,6 +19,17 @@ class MockApiService implements EventKuyApi {
 
   void _notifyTicketChanged() {
     if (!_ticketChanges.isClosed) _ticketChanges.add(null);
+  }
+
+  int _soldOf(Event event) {
+    final owned = _tickets
+        .where(
+          (t) =>
+              t.eventId == event.id &&
+              (t.status == 'paid' || t.status == 'checked_in'),
+        )
+        .length;
+    return event.sold + owned;
   }
 
   @override
@@ -154,7 +167,9 @@ class MockApiService implements EventKuyApi {
   @override
   Future<List<Event>> fetchEvents() async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return List.unmodifiable(_events);
+    return _events
+        .map((event) => event.copyWith(sold: _soldOf(event)))
+        .toList(growable: false);
   }
 
   @override
@@ -168,22 +183,68 @@ class MockApiService implements EventKuyApi {
   }
 
   @override
-  Future<Ticket> checkout({
+  Future<CheckoutResult> checkout({
     required String eventId,
+    int qty = 1,
     String? voucherCode,
     String paymentMethod = 'GoPay',
   }) async {
     final event = _events.firstWhere((e) => e.id == eventId);
-    _counter += 1;
-    final ticket = Ticket(
-      code: 'EVK-MOCK${_counter.toString().padLeft(6, '0')}',
-      eventId: event.id,
-      eventTitle: event.title,
-      status: 'paid',
-    );
-    _tickets.insert(0, ticket);
+    if (qty < 1) {
+      throw StateError('Jumlah tiket minimal 1.');
+    }
+
+    final sisa = event.available == null
+        ? null
+        : event.quota - _soldOf(event);
+    if (sisa != null && sisa <= 0) {
+      throw StateError('Stok tiket habis.');
+    }
+    if (sisa != null && qty > sisa) {
+      throw StateError('Sisa tiket tinggal $sisa.');
+    }
+
+    var discount = 0;
+    String? appliedVoucher;
+    if (voucherCode != null && voucherCode.trim().isNotEmpty) {
+      final voucher = await fetchVoucher(voucherCode);
+      if (voucher == null) {
+        throw StateError('Voucher tidak valid atau kedaluwarsa.');
+      }
+      if (_usedVouchers.contains(voucher.code)) {
+        throw StateError('Voucher ${voucher.code} sudah pernah kamu pakai.');
+      }
+      appliedVoucher = voucher.code;
+      discount = voucher.discount;
+    }
+
+    final subtotal = event.price * qty;
+    final adminFee = 2500 * qty;
+    final total = (subtotal + adminFee - discount).clamp(0, 1 << 31).toInt();
+
+    final created = <Ticket>[];
+    for (var i = 0; i < qty; i++) {
+      _counter += 1;
+      final ticket = Ticket(
+        code: 'EVK-MOCK${_counter.toString().padLeft(6, '0')}',
+        eventId: event.id,
+        eventTitle: event.title,
+        status: 'paid',
+      );
+      _tickets.insert(0, ticket);
+      created.add(ticket);
+    }
+
+    if (appliedVoucher != null) _usedVouchers.add(appliedVoucher);
     _notifyTicketChanged();
-    return ticket;
+
+    return CheckoutResult(
+      tickets: List.unmodifiable(created),
+      subtotal: subtotal,
+      adminFee: adminFee,
+      discount: discount,
+      total: total,
+    );
   }
 
   @override
@@ -233,6 +294,9 @@ class MockApiService implements EventKuyApi {
     }
     return null;
   }
+
+  @override
+  Future<Set<String>> fetchUsedVoucherCodes() async => Set.of(_usedVouchers);
 
   /// Network fallback saat file aset lokal belum disediakan.
   static String fallbackUrl(String seed) =>

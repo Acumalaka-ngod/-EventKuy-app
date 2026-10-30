@@ -243,7 +243,7 @@ void main() {
       );
       late final Ticket ticket;
       await tester.runAsync(() async {
-        ticket = await tickets.checkout(events.events.first);
+        ticket = (await tickets.checkout(events.events.first)).ticket;
       });
 
       await tester.pumpWidget(

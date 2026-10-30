@@ -21,7 +21,7 @@ void main() {
       addTearDown(provider.dispose);
 
       final events = await api.fetchEvents();
-      final ticket = await provider.checkout(events.first);
+      final ticket = (await provider.checkout(events.first)).ticket;
 
       provider.startWatching();
       // Sisi organizer: check-in lewat kode tiket.
@@ -42,7 +42,7 @@ void main() {
       addTearDown(provider.dispose);
 
       final events = await api.fetchEvents();
-      final ticket = await provider.checkout(events.first);
+      final ticket = (await provider.checkout(events.first)).ticket;
       await api.checkIn(ticket.code);
       // Muat awal: tiket sudah checked_in sebelum dipantau.
       await provider.load();
@@ -67,7 +67,7 @@ void main() {
     late final Ticket ticket;
     await tester.runAsync(() async {
       await events.loadEvents();
-      ticket = await tickets.checkout(events.events.first);
+      ticket = (await tickets.checkout(events.events.first)).ticket;
     });
 
     await tester.pumpWidget(

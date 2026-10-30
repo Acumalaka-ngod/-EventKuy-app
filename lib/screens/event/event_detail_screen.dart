@@ -298,19 +298,34 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           fontSize: 22,
                         ),
                       ),
+                      if (event.available != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          event.isSoldOut
+                              ? 'Tiket habis'
+                              : 'Sisa ${event.available} tiket',
+                          style: TextStyle(
+                            color: event.isSoldOut ? AppTheme.red : AppTheme.muted,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(width: 24),
                   Expanded(
                     child: CustomButton(
-                      label: 'Daftar & Beli Tiket',
+                      label: event.isSoldOut ? 'Tiket Habis' : 'Daftar & Beli Tiket',
                       height: 56,
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CheckoutScreen(event: event),
-                        ),
-                      ),
+                      onPressed: event.isSoldOut
+                          ? null
+                          : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CheckoutScreen(event: event),
+                                ),
+                              ),
                     ),
                   ),
                 ],
