@@ -139,7 +139,9 @@ class _MainNavigationState extends State<MainNavigation> {
     final isSelected = _index == index;
 
     return InkWell(
-      onTap: () => setState(() => _index = index),
+      // Semua layout harus lewat `_onTap` supaya perilaku tab (mis. menyaring
+      // ulang shelf favorit) sama di HP, tablet, dan desktop.
+      onTap: () => _onTap(index),
       borderRadius: BorderRadius.circular(8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
