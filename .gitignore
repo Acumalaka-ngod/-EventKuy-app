@@ -60,3 +60,6 @@ supabase.local.json
 ~$*
 *.tmp.docx
 
+# Salinan AutoRecover Microsoft Word (bukan dokumen resmi)
+*AutoRecovered*.docx
+
