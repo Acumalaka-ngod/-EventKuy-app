@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import '../models/app_notification.dart';
 import '../models/check_in_result.dart';
 import '../models/checkout_result.dart';
 import '../models/event.dart';
+import '../models/organizer.dart';
 import '../models/ticket.dart';
+import '../models/transaction_record.dart';
 import '../models/voucher.dart';
 import 'api_service.dart';
 
@@ -13,6 +16,7 @@ class MockApiService implements EventKuyApi {
   final Set<String> _favorites = {};
   final Set<String> _usedVouchers = {};
   final List<Ticket> _tickets = [];
+  final List<TransactionRecord> _transactions = [];
   int _counter = 0;
   final StreamController<void> _ticketChanges =
       StreamController<void>.broadcast();
@@ -38,10 +42,37 @@ class MockApiService implements EventKuyApi {
   // Kalau file aset lokal belum ada, EventImage otomatis fallback ke picsum.
   static String img(String asset, String seed) => asset;
 
+  // Organizer demo — mirror seed di supabase/p2_event_content.sql.
+  static final _organizerEventkuy = Organizer(
+    id: 'a14d6633-bdd9-4af6-a012-cda59d8cc9fa',
+    name: 'EventKuy Official',
+    bio:
+        'Penyelenggara resmi platform EventKuy. Menyelenggarakan berbagai acara musik, workshop, seminar, dan olahraga di seluruh Indonesia.',
+    city: 'Jakarta',
+    verified: true,
+  );
+  static final _organizerRagaNusantara = Organizer(
+    id: 'b25d7744-cee0-4bf7-b123-dea60edd901b',
+    name: 'Raga Nusantara',
+    bio:
+        'Komunitas penggemar musik lokal yang mengedepankan karya anak bangsa dari Sabang hingga Merauke.',
+    city: 'Bandung',
+    verified: true,
+  );
+  static final _organizerTechCamp = Organizer(
+    id: 'c36e8855-dff1-4c08-c234-efb71fee022c',
+    name: 'TechCamp Indonesia',
+    bio:
+        'Platform edukasi teknologi dan startup dengan workshop hands-on serta seminar dari praktisi industri.',
+    city: 'Jakarta',
+    verified: false,
+  );
+
   final List<Event> _events = [
     Event(
       id: '11111111-1111-4111-8111-000000000001',
       organizerId: 'a14d6633-bdd9-4af6-a012-cda59d8cc9fa',
+      organizer: _organizerEventkuy,
       title: 'Sound of Tomorrow',
       description:
           'Sound of Tomorrow adalah festival musik yang menghadirkan deretan musisi terbaik dari berbagai genre. Nikmati pengalaman tak terlupakan bersama teman-teman, dengan panggung megah dan fasilitas lengkap.',
@@ -49,6 +80,8 @@ class MockApiService implements EventKuyApi {
       location: 'Istora Senayan, Jl. Pintu Satu Senayan No. 1, Jakarta Pusat',
       price: 750000,
       quota: 3000,
+      rating: 4.9,
+      ratingCount: 320,
       imageUrl: img('assets/images/event_sound.jpg', 'concert'),
       imageUrls: const [
         'assets/images/event_wtf.jpg',
@@ -60,6 +93,8 @@ class MockApiService implements EventKuyApi {
     ),
     Event(
       id: '11111111-1111-4111-8111-000000000002',
+      organizerId: 'b25d7744-cee0-4bf7-b123-dea60edd901b',
+      organizer: _organizerRagaNusantara,
       title: 'We The Fest 2025',
       description: 'Festival musik tahunan terbesar di Jakarta.',
       date: DateTime(2025, 7, 25),
@@ -67,6 +102,8 @@ class MockApiService implements EventKuyApi {
           'Gelora Bung Karno (GBK), Jl. Pintu Satu Senayan, Jakarta Pusat',
       price: 750000,
       quota: 10000,
+      rating: 4.7,
+      ratingCount: 180,
       imageUrl: img('assets/images/event_wtf.jpg', 'festival'),
       imageUrls: const [
         'assets/images/event_sound.jpg',
@@ -78,12 +115,16 @@ class MockApiService implements EventKuyApi {
     ),
     Event(
       id: '11111111-1111-4111-8111-000000000003',
+      organizerId: 'c36e8855-dff1-4c08-c234-efb71fee022c',
+      organizer: _organizerTechCamp,
       title: 'Photography Workshop',
       description: 'Workshop fotografi untuk pemula sampai pro.',
       date: DateTime(2025, 7, 12),
       location: 'Braga Creative Hub, Jl. Braga No. 21, Bandung',
       price: 250000,
       quota: 200,
+      rating: 4.5,
+      ratingCount: 45,
       imageUrl: img('assets/images/event_photo.jpg', 'workshop'),
       imageUrls: const [
         'assets/images/event_uiux.jpg',
@@ -95,6 +136,8 @@ class MockApiService implements EventKuyApi {
     ),
     Event(
       id: '11111111-1111-4111-8111-000000000004',
+      organizerId: 'c36e8855-dff1-4c08-c234-efb71fee022c',
+      organizer: _organizerTechCamp,
       title: 'Future of Technology',
       description: 'Seminar AI, startup, dan masa depan teknologi.',
       date: DateTime(2025, 7, 18),
@@ -102,6 +145,8 @@ class MockApiService implements EventKuyApi {
           'Jakarta Convention Center, Jl. Gatot Subroto, Jakarta Pusat',
       price: 150000,
       quota: 1000,
+      rating: 4.3,
+      ratingCount: 90,
       imageUrl: img('assets/images/event_tech.jpg', 'seminar'),
       imageUrls: const [
         'assets/images/event_marketing.jpg',
@@ -113,12 +158,16 @@ class MockApiService implements EventKuyApi {
     ),
     Event(
       id: '11111111-1111-4111-8111-000000000005',
+      organizerId: 'b25d7744-cee0-4bf7-b123-dea60edd901b',
+      organizer: _organizerRagaNusantara,
       title: 'Jakarta Running Festival',
       description: 'Lari bersama 5K & 10K di Monas.',
       date: DateTime(2025, 7, 27),
       location: 'Kawasan Monas, Jl. Silang Monas, Jakarta Pusat',
       price: 300000,
       quota: 5000,
+      rating: 4.8,
+      ratingCount: 210,
       imageUrl: img('assets/images/event_run.jpg', 'running'),
       imageUrls: const [
         'assets/images/event_sound.jpg',
@@ -130,12 +179,16 @@ class MockApiService implements EventKuyApi {
     ),
     Event(
       id: '11111111-1111-4111-8111-000000000006',
+      organizerId: 'a14d6633-bdd9-4af6-a012-cda59d8cc9fa',
+      organizer: _organizerEventkuy,
       title: 'UI/UX Design Workshop',
       description: 'Belajar desain produk dari praktisi.',
       date: DateTime(2025, 7, 5),
       location: 'GoWork Chubb Square, Jl. M.H. Thamrin No. 10, Jakarta Pusat',
       price: 200000,
       quota: 300,
+      rating: 4.6,
+      ratingCount: 60,
       imageUrl: img('assets/images/event_uiux.jpg', 'uiux'),
       imageUrls: const [
         'assets/images/event_photo.jpg',
@@ -147,12 +200,16 @@ class MockApiService implements EventKuyApi {
     ),
     Event(
       id: '11111111-1111-4111-8111-000000000007',
+      organizerId: 'c36e8855-dff1-4c08-c234-efb71fee022c',
+      organizer: _organizerTechCamp,
       title: 'Digital Marketing Summit',
       description: 'Strategi growth & ads terbaru.',
       date: DateTime(2025, 7, 8),
       location: 'Gedung Merdeka, Jl. Asia Afrika No. 65, Bandung',
       price: 350000,
       quota: 500,
+      rating: 4.4,
+      ratingCount: 75,
       imageUrl: img('assets/images/event_marketing.jpg', 'marketing'),
       imageUrls: const [
         'assets/images/event_tech.jpg',
@@ -188,6 +245,9 @@ class MockApiService implements EventKuyApi {
     int qty = 1,
     String? voucherCode,
     String paymentMethod = 'GoPay',
+    String buyerName = '',
+    String buyerEmail = '',
+    String buyerPhone = '',
   }) async {
     final event = _events.firstWhere((e) => e.id == eventId);
     if (qty < 1) {
@@ -233,6 +293,25 @@ class MockApiService implements EventKuyApi {
       );
       _tickets.insert(0, ticket);
       created.add(ticket);
+
+      // Sama seperti RPC checkout: satu transaksi per tiket, diskon hanya
+      // dibebankan pada tiket pertama.
+      final ticketDiscount = i == 0 ? discount : 0;
+      _transactions.insert(
+        0,
+        TransactionRecord(
+          id: 'TRX-MOCK${_counter.toString().padLeft(6, '0')}',
+          eventTitle: event.title,
+          ticketCode: ticket.code,
+          total: (event.price + 2500 - ticketDiscount).clamp(0, 1 << 31).toDouble(),
+          paymentMethod: paymentMethod,
+          status: 'paid',
+          createdAt: DateTime.now(),
+          buyerName: buyerName.trim(),
+          buyerEmail: buyerEmail.trim(),
+          buyerPhone: buyerPhone.trim(),
+        ),
+      );
     }
 
     if (appliedVoucher != null) _usedVouchers.add(appliedVoucher);
@@ -274,6 +353,11 @@ class MockApiService implements EventKuyApi {
   }
 
   @override
+  Future<List<TransactionRecord>> fetchTransactions() async {
+    return List.unmodifiable(_transactions);
+  }
+
+  @override
   Future<Set<String>> fetchFavoriteIds() async => Set.of(_favorites);
 
   @override
@@ -297,6 +381,69 @@ class MockApiService implements EventKuyApi {
 
   @override
   Future<Set<String>> fetchUsedVoucherCodes() async => Set.of(_usedVouchers);
+
+  // ── Notifikasi mock (P2 scaffold) ─────────────────────────────────
+
+  final List<AppNotification> _notifications = [];
+  final Set<String> _deviceTokens = {};
+
+  @override
+  Future<List<AppNotification>> fetchNotifications() async =>
+      List.unmodifiable(_notifications);
+
+  @override
+  Future<void> markNotificationRead(String notificationId) async {
+    final i = _notifications.indexWhere((n) => n.id == notificationId);
+    if (i == -1) return;
+    final n = _notifications[i];
+    if (!n.isRead) {
+      _notifications[i] = AppNotification(
+        id: n.id,
+        userId: n.userId,
+        title: n.title,
+        body: n.body,
+        eventId: n.eventId,
+        isRead: true,
+        readAt: DateTime.now(),
+        createdAt: n.createdAt,
+      );
+    }
+  }
+
+  @override
+  Future<List<String>> fetchDeviceTokens() async =>
+      List.unmodifiable(_deviceTokens);
+
+  @override
+  Future<void> registerDeviceToken({
+    required String token,
+    String platform = 'unknown',
+  }) async {
+    _deviceTokens.add(token);
+  }
+
+  /// Seed notifikasi demo untuk pengujian UI.
+  void seedNotification({
+    required String id,
+    required String userId,
+    required String title,
+    required String body,
+    String? eventId,
+    bool isRead = false,
+  }) {
+    _notifications.add(
+      AppNotification(
+        id: id,
+        userId: userId,
+        title: title,
+        body: body,
+        eventId: eventId,
+        isRead: isRead,
+        readAt: isRead ? DateTime.now() : null,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
 
   /// Network fallback saat file aset lokal belum disediakan.
   static String fallbackUrl(String seed) =>

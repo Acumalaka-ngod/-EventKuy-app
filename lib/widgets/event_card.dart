@@ -1,43 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../core/formatters.dart';
 import '../core/theme.dart';
 import '../models/event.dart';
 import '../providers/favorite_provider.dart';
+import 'app_icon_button.dart';
 import 'event_image.dart';
 
-String formatRp(int v) => v == 0
-    ? 'Gratis'
-    : NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
-        .format(v);
-
-/// Tanggal lengkap bahasa Indonesia, contoh: 12 Juli 2025
-/// (fallback ke format Inggris bila data locale belum diinisialisasi,
-/// misalnya saat widget test).
-String formatTanggal(DateTime d) {
-  try {
-    return DateFormat('d MMMM yyyy', 'id_ID').format(d);
-  } catch (_) {
-    return DateFormat('d MMMM yyyy').format(d);
-  }
-}
-
-/// Tanggal pendek bahasa Indonesia, contoh: 12 Jul 2025
-String formatTanggalSingkat(DateTime d) {
-  try {
-    return DateFormat('d MMM yyyy', 'id_ID').format(d);
-  } catch (_) {
-    return DateFormat('d MMM yyyy').format(d);
-  }
-}
-
-String formatBulanPendek(DateTime d) {
-  try {
-    return DateFormat('MMM', 'id_ID').format(d).toUpperCase();
-  } catch (_) {
-    return DateFormat('MMM').format(d).toUpperCase();
-  }
-}
+// Kompatibilitas: pemanggil lama mengimpor helper format dari file ini.
+export '../core/formatters.dart';
 
 /// Warna aksen per kategori (untuk chip & badge).
 Color categoryColor(String category) {
@@ -70,21 +41,20 @@ class _FavoriteButton extends StatelessWidget {
     final fav = context.watch<FavoriteProvider>();
     final isFav = fav.isFav(event.id);
 
-    return GestureDetector(
-      onTap: () => fav.toggle(event.id),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.92),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          size: size * 0.48,
-          color: isFav ? AppTheme.coral : AppTheme.ink,
-        ),
-      ),
+    return AppIconButton(
+      icon: Icons.favorite_border_rounded,
+      selectedIcon: Icons.favorite_rounded,
+      label: 'Simpan ke favorit',
+      selectedLabel: 'Hapus dari favorit',
+      selected: isFav,
+      onPressed: () => fav.toggle(event.id),
+      size: 48,
+      visualSize: size,
+      iconSize: size * 0.48,
+      backgroundColor: Colors.white.withValues(alpha: 0.92),
+      selectedBackgroundColor: Colors.white.withValues(alpha: 0.92),
+      foregroundColor: AppTheme.ink,
+      selectedForegroundColor: AppTheme.coral,
     );
   }
 }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
 import '../core/errors.dart';
 import '../core/theme.dart';
 import '../models/ticket.dart';
 import '../services/ticket_pdf_service.dart';
 import 'app_logo.dart';
-import 'custom_button.dart';
 
 /// E-Ticket EventKuy — header gradien, garis potong, QR, status check-in,
 /// pemilik tiket, dan unduh PDF.
@@ -14,7 +14,6 @@ class TicketItem extends StatelessWidget {
   final String dateLocation;
   final String attendeeName;
   final VoidCallback? onViewDetail;
-  final VoidCallback? onCheckIn;
 
   const TicketItem({
     super.key,
@@ -22,7 +21,6 @@ class TicketItem extends StatelessWidget {
     this.dateLocation = '',
     this.attendeeName = 'Andi Pratama',
     this.onViewDetail,
-    this.onCheckIn,
   });
 
   @override
@@ -70,7 +68,9 @@ class TicketItem extends StatelessWidget {
                           const Spacer(),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 5),
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
@@ -90,19 +90,31 @@ class TicketItem extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 30),
-                      GestureDetector(
+                      Semantics(
+                        container: true,
+                        button: onViewDetail != null,
+                        label: 'Lihat detail ${ticket.eventTitle}',
                         onTap: onViewDetail,
-                        child: Text(
-                          ticket.eventTitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: AppTheme.headingFont,
-                            color: Colors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            height: 1.2,
+                        child: ExcludeSemantics(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: onViewDetail,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Text(
+                                ticket.eventTitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: AppTheme.headingFont,
+                                  color: Colors.white,
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -110,8 +122,11 @@ class TicketItem extends StatelessWidget {
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            const Icon(Icons.calendar_month_rounded,
-                                color: Colors.white70, size: 13),
+                            const Icon(
+                              Icons.calendar_month_rounded,
+                              color: Colors.white70,
+                              size: 13,
+                            ),
                             const SizedBox(width: 7),
                             Expanded(
                               child: Text(
@@ -190,8 +205,11 @@ class TicketItem extends StatelessWidget {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.verified_rounded,
-                              color: AppTheme.green, size: 18),
+                          Icon(
+                            Icons.verified_rounded,
+                            color: AppTheme.green,
+                            size: 18,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Check-in berhasil',
@@ -205,19 +223,44 @@ class TicketItem extends StatelessWidget {
                       ),
                     )
                   else
-                    CustomButton(
-                      label: 'Check-in Tiket',
-                      height: 46,
-                      icon: Icons.qr_code_scanner_rounded,
-                      onPressed: onCheckIn,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.violetSoft,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.qr_code_2_rounded,
+                            color: AppTheme.violet,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Tunjukkan QR ini ke petugas',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppTheme.violet,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.only(top: 17),
                     decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: AppTheme.border),
-                      ),
+                      border: Border(top: BorderSide(color: AppTheme.border)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -288,9 +331,7 @@ class _TicketCut extends StatelessWidget {
               ),
             ),
           ),
-          const Expanded(
-            child: CustomPaint(painter: _DashedLinePainter()),
-          ),
+          const Expanded(child: CustomPaint(painter: _DashedLinePainter())),
           Transform.translate(
             offset: const Offset(11, 0),
             child: Container(
@@ -378,9 +419,7 @@ class _DownloadPdfButtonState extends State<_DownloadPdfButton> {
       );
     } catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(friendlyError(error))),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(friendlyError(error))));
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -399,16 +438,12 @@ class _DownloadPdfButtonState extends State<_DownloadPdfButton> {
           : const Icon(Icons.download_rounded, size: 15),
       label: Text(
         _downloading ? 'Menyiapkan...' : 'Unduh PDF',
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
       ),
       style: TextButton.styleFrom(
         foregroundColor: AppTheme.violet,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        minimumSize: const Size(0, 32),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: const Size(0, 48),
       ),
     );
   }

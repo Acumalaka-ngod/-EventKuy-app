@@ -5,6 +5,8 @@ import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/event.dart';
 import '../../providers/favorite_provider.dart';
+import '../../services/share_service.dart';
+import '../../widgets/app_icon_button.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/event_gallery.dart';
@@ -21,10 +23,28 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  void _share() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tautan event disalin ke clipboard!')),
-    );
+  Future<void> _share() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final text = ShareService.shareText(widget.event);
+    final result = await ShareService.share(text);
+    if (!mounted) return;
+
+    switch (result) {
+      case ShareResult.shared:
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Event dibagikan lewat share sheet!')),
+        );
+      case ShareResult.copied:
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Info event disalin ke clipboard!')),
+        );
+      case ShareResult.failed:
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Gagal membagikan event. Coba lagi.'),
+          ),
+        );
+    }
   }
 
   @override
@@ -73,6 +93,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             children: [
                               _glassButton(
                                 icon: Icons.arrow_back_rounded,
+                                label: 'Kembali',
                                 onTap: () => Navigator.pop(context),
                               ),
                               const Spacer(),
@@ -80,13 +101,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 children: [
                                   _glassButton(
                                     icon: Icons.ios_share_rounded,
+                                    label: 'Bagikan event',
                                     onTap: _share,
                                   ),
                                   const SizedBox(width: 12),
                                   _glassButton(
-                                    icon: isFav
-                                        ? Icons.favorite_rounded
-                                        : Icons.favorite_border_rounded,
+                                    icon: Icons.favorite_border_rounded,
+                                    selectedIcon: Icons.favorite_rounded,
+                                    label: 'Simpan ke favorit',
+                                    selectedLabel: 'Hapus dari favorit',
                                     onTap: () => fav.toggle(event.id),
                                     active: isFav,
                                   ),
@@ -134,33 +157,44 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 ),
                               ),
                               const Spacer(),
-                              const Icon(
-                                Icons.star_rounded,
-                                color: AppTheme.amber,
-                                size: 17,
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                '4.9',
-                                style: TextStyle(
+                              if (event.ratingCount > 0) ...[
+                                const Icon(
+                                  Icons.star_rounded,
                                   color: AppTheme.amber,
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w800,
+                                  size: 17,
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Flexible(
-                                child: Text(
-                                  '(320 ulasan)',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 4),
+                                Text(
+                                  event.rating.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    color: AppTheme.amber,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '(${event.ratingCount} ulasan)',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: AppTheme.muted,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ] else ...[
+                                const Text(
+                                  'Belum ada ulasan',
                                   style: TextStyle(
                                     color: AppTheme.muted,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 18),
@@ -339,25 +373,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Widget _glassButton({
     required IconData icon,
+    required String label,
     required VoidCallback onTap,
+    IconData? selectedIcon,
+    String? selectedLabel,
     bool active = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: active ? Colors.white : const Color(0x33000000),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-        ),
-        child: Icon(
-          icon,
-          color: active ? AppTheme.coral : Colors.white,
-          size: 20,
-        ),
-      ),
+    return AppIconButton(
+      icon: icon,
+      selectedIcon: selectedIcon,
+      label: label,
+      selectedLabel: selectedLabel,
+      selected: active,
+      onPressed: onTap,
+      backgroundColor: const Color(0x33000000),
+      foregroundColor: Colors.white,
+      selectedBackgroundColor: Colors.white,
+      selectedForegroundColor: AppTheme.coral,
+      borderColor: Colors.white.withValues(alpha: 0.2),
+      iconSize: 20,
     );
   }
 
@@ -427,6 +461,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Widget _buildOrganizer(BuildContext context) {
+    final org = widget.event.organizer;
+    final displayOrg =
+        org != null && org.displayName.isNotEmpty ? org : null;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -442,10 +479,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               color: AppTheme.ink,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'E',
-                style: TextStyle(
+                displayOrg?.initial ?? 'E',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -454,48 +491,69 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
           ),
           const SizedBox(width: 15),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'PENYELENGGARA',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppTheme.muted,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.2,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'EventKuy Official',
-                  style: TextStyle(
+                  displayOrg?.displayName ?? 'EventKuy Official',
+                  style: const TextStyle(
                     color: AppTheme.ink,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                if (displayOrg != null && displayOrg.bio.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    displayOrg.bio,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 11,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          TextButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Kamu sekarang mengikuti EventKuy Official.'),
-                ),
-              );
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.violet,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+          if (displayOrg != null && displayOrg.verified) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.greenSoft,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_rounded, size: 12, color: AppTheme.green),
+                  SizedBox(width: 4),
+                  Text(
+                    'Terverifikasi',
+                    style: TextStyle(
+                      color: AppTheme.green,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Text(
-              'Ikuti',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
+          ],
         ],
       ),
     );

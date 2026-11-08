@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../core/errors.dart';
 import '../models/check_in_result.dart';
 import '../models/checkout_result.dart';
 import '../models/event.dart';
@@ -28,6 +30,7 @@ class TicketProvider extends ChangeNotifier {
   final Duration? pollInterval;
   final List<Ticket> _tickets = [];
   bool _loading = false;
+  String? _error;
 
   StreamSubscription<void>? _watchSub;
   Timer? _reloadDebounce;
@@ -37,6 +40,7 @@ class TicketProvider extends ChangeNotifier {
 
   List<Ticket> get tickets => List.unmodifiable(_tickets);
   bool get loading => _loading;
+  String? get error => _error;
 
   /// Tiket yang statusnya baru berubah menjadi `checked_in` saat dipantau.
   /// Dipakai layar untuk menampilkan notifikasi, lalu diakui lewat
@@ -45,6 +49,7 @@ class TicketProvider extends ChangeNotifier {
 
   Future<void> load() async {
     _loading = true;
+    _error = null;
     notifyListeners();
     try {
       final tickets = await _api.fetchTickets();
@@ -52,6 +57,9 @@ class TicketProvider extends ChangeNotifier {
       _tickets
         ..clear()
         ..addAll(tickets);
+    } catch (error) {
+      if (_disposed) return;
+      _error = friendlyError(error);
     } finally {
       if (!_disposed) {
         _loading = false;
@@ -99,6 +107,7 @@ class TicketProvider extends ChangeNotifier {
     try {
       final tickets = await _api.fetchTickets();
       if (_disposed) return;
+      _error = null;
       _applyTickets(tickets);
     } catch (_) {
       // Abaikan: jaringan bermasalah, coba lagi pada putaran berikutnya.
@@ -149,12 +158,18 @@ class TicketProvider extends ChangeNotifier {
     int qty = 1,
     String? voucherCode,
     String paymentMethod = 'GoPay',
+    String buyerName = '',
+    String buyerEmail = '',
+    String buyerPhone = '',
   }) async {
     final result = await _api.checkout(
       eventId: event.id,
       qty: qty,
       voucherCode: voucherCode,
       paymentMethod: paymentMethod,
+      buyerName: buyerName,
+      buyerEmail: buyerEmail,
+      buyerPhone: buyerPhone,
     );
     _tickets.insertAll(0, result.tickets);
     notifyListeners();
@@ -162,7 +177,6 @@ class TicketProvider extends ChangeNotifier {
   }
 
   Future<Set<String>> fetchUsedVoucherCodes() => _api.fetchUsedVoucherCodes();
-
 
   Future<CheckInResult> checkIn(String code) async {
     final result = await _api.checkIn(code);
@@ -185,6 +199,8 @@ class TicketProvider extends ChangeNotifier {
     stopWatching();
     _tickets.clear();
     _lastCheckIn = null;
+    _loading = false;
+    _error = null;
     notifyListeners();
   }
 

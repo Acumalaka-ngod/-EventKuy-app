@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../core/errors.dart';
 import '../models/event.dart';
 import '../services/api_service.dart';
@@ -31,10 +32,12 @@ class EventProvider extends ChangeNotifier {
     if (_query.isNotEmpty) {
       final q = _query.toLowerCase();
       list = list
-          .where((e) =>
-              e.title.toLowerCase().contains(q) ||
-              e.location.toLowerCase().contains(q) ||
-              e.category.toLowerCase().contains(q))
+          .where(
+            (e) =>
+                e.title.toLowerCase().contains(q) ||
+                e.location.toLowerCase().contains(q) ||
+                e.category.toLowerCase().contains(q),
+          )
           .toList();
     }
     return list;
@@ -44,6 +47,7 @@ class EventProvider extends ChangeNotifier {
 
   bool get loading => _loading;
   String? get error => _error;
+  String get query => _query;
   String get category => _category;
 
   Future<void> loadEvents({bool force = false}) async {

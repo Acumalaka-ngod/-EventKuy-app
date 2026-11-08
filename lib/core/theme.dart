@@ -26,11 +26,15 @@ class AppTheme {
   static const Color greenSoft = Color(0xFFE7F3EE);
   static const Color red = Color(0xFFB3261E);
   static const Color redSoft = Color(0xFFFBEAE7);
-  static const Color amber = Color(0xFFA96F12);
+  static const Color amber = Color(0xFF8A5A0B);
+  static const Color amberSoft = Color(0xFFFBF0DC);
   static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceMuted = Color(0xFFF8F8FB);
+  static const Color chipSurface = Color(0xFFF0F0F5);
   static const Color canvas = Color(0xFFF4F1E8);
   static const Color fieldBg = Color(0xFFFBF8F1);
-  static const Color textFaint = Color(0xFF9A9387);
+  static const Color textFaint = Color(0xFF736C60);
+  static const Color overlayScrim = Color(0x33000000);
 
   // ── Alias kompatibel dengan kode lama ──────────────────────────────
   static const Color primary = violet;
@@ -50,11 +54,22 @@ class AppTheme {
   static const Color chipSelected = ink;
 
   // ── Radius ──────────────────────────────────────────────────────────
-  static const double radiusButton = 8;
-  static const double radiusField = 8;
-  static const double radiusCard = 12;
-  static const double radiusPanel = 14;
-  static const double radiusHero = 12;
+  // Skala tunggal: xs < sm < md < lg < xl < 2xl < 3xl < pill.
+  static const double radiusXs = 3;
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 14;
+  static const double radiusXl = 20;
+  static const double radius2xl = 28;
+  static const double radius3xl = 32;
+  static const double radiusPill = 999;
+
+  // Alias kompatibel dengan kode lama.
+  static const double radiusButton = radiusSm;
+  static const double radiusField = radiusSm;
+  static const double radiusCard = radiusMd;
+  static const double radiusPanel = radiusLg;
+  static const double radiusHero = radiusMd;
 
   // ── Shadow ──────────────────────────────────────────────────────────
   /// Shadow kartu: setipis garis, bukan glow.

@@ -4,12 +4,14 @@ class AppUser {
   final String name;
   final String email;
   final String role;
+  final String? avatarUrl;
 
   const AppUser({
     required this.id,
     required this.name,
     required this.email,
     this.role = 'pengguna',
+    this.avatarUrl,
   });
 
   /// Apakah akun ini berperan organizer (atau admin).
@@ -21,6 +23,7 @@ class AppUser {
       name: json['name'] as String,
       email: json['email'] as String,
       role: (json['role'] as String?) ?? 'pengguna',
+      avatarUrl: json['avatar_url'] as String?,
     );
   }
 }

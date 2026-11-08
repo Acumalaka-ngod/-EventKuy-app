@@ -43,10 +43,9 @@ Widget _wrap({
         create: (_) => events ?? EventProvider(api: MockApiService()),
       ),
       ChangeNotifierProvider(
-        create: (_) => tickets ?? TicketProvider(
-          api: MockApiService(),
-          pollInterval: null,
-        ),
+        create: (_) =>
+            tickets ??
+            TicketProvider(api: MockApiService(), pollInterval: null),
       ),
       ChangeNotifierProvider(
         create: (_) => FavoriteProvider(api: MockApiService()),
@@ -93,10 +92,7 @@ void main() {
         expect(buyBar.width, size.width);
         expect(find.text(event.title).hitTestable(), findsOneWidget);
 
-        expect(
-          find.text('1 / ${event.galleryImages.length}'),
-          findsOneWidget,
-        );
+        expect(find.text('1 / ${event.galleryImages.length}'), findsOneWidget);
         expect(find.text('Istora Senayan'), findsOneWidget); // kartu lokasi
         expect(tester.takeException(), isNull);
       });
@@ -113,7 +109,10 @@ void main() {
       final event = events.events.first;
 
       await tester.pumpWidget(
-        _wrap(child: EventDetailScreen(event: event), events: events),
+        _wrap(
+          child: EventDetailScreen(event: event),
+          events: events,
+        ),
       );
       await tester.pump();
 
@@ -157,7 +156,8 @@ void main() {
         expect(find.text('TICKET ID'), findsOneWidget);
         expect(find.byType(QrImageView), findsOneWidget);
         expect(find.text('Unduh PDF'), findsOneWidget);
-        expect(find.text('Check-in Tiket'), findsOneWidget);
+        expect(find.text('Tunjukkan QR ini ke petugas'), findsOneWidget);
+        expect(find.text('Check-in Tiket'), findsNothing);
         expect(tester.takeException(), isNull);
       });
     }
@@ -237,10 +237,7 @@ void main() {
       addTearDown(tester.view.reset);
 
       final events = await _loadedEventProvider(tester);
-      final tickets = TicketProvider(
-        api: MockApiService(),
-        pollInterval: null,
-      );
+      final tickets = TicketProvider(api: MockApiService(), pollInterval: null);
       late final Ticket ticket;
       await tester.runAsync(() async {
         ticket = (await tickets.checkout(events.events.first)).ticket;

@@ -1,7 +1,14 @@
+import 'organizer.dart';
+
 /// Model Event — mirror tabel `public.events` di Supabase.
 class Event {
   final String id;
   final String? organizerId;
+  final String? organizerProfileId;
+
+  /// Profil penyelenggara (diisi saat fetch events dengan join organizers).
+  final Organizer? organizer;
+
   final String title;
   final String description;
   final DateTime date;
@@ -17,9 +24,17 @@ class Event {
   final List<String> tags;
   final String timeRange;
 
+  /// Rating rata-rata event (0–5), read-only dari seed/backend.
+  final double rating;
+
+  /// Jumlah ulasan yang mendasari rating, read-only dari seed/backend.
+  final int ratingCount;
+
   const Event({
     required this.id,
     this.organizerId,
+    this.organizerProfileId,
+    this.organizer,
     required this.title,
     required this.description,
     required this.date,
@@ -32,6 +47,8 @@ class Event {
     required this.category,
     this.tags = const [],
     this.timeRange = '',
+    this.rating = 0,
+    this.ratingCount = 0,
   });
 
   /// Daftar foto untuk galeri detail event.
@@ -58,10 +75,17 @@ class Event {
   bool get isSoldOut => available == 0;
 
   /// Salinan event dengan jumlah terjual yang sudah diperbarui.
-  Event copyWith({int? sold}) {
+  Event copyWith({
+    int? sold,
+    Organizer? organizer,
+    double? rating,
+    int? ratingCount,
+  }) {
     return Event(
       id: id,
       organizerId: organizerId,
+      organizerProfileId: organizerProfileId,
+      organizer: organizer ?? this.organizer,
       title: title,
       description: description,
       date: date,
@@ -74,6 +98,8 @@ class Event {
       category: category,
       tags: tags,
       timeRange: timeRange,
+      rating: rating ?? this.rating,
+      ratingCount: ratingCount ?? this.ratingCount,
     );
   }
 
@@ -81,6 +107,10 @@ class Event {
     return Event(
       id: json['id'].toString(),
       organizerId: json['organizer_id'] as String?,
+      organizerProfileId: json['organizer_profile_id'] as String?,
+      organizer: json['organizers'] != null
+          ? Organizer.fromJson(Map<String, dynamic>.from(json['organizers']))
+          : null,
       title: json['title'] as String,
       description: json['description'] as String? ?? '',
       date: DateTime.parse(json['date'] as String),
@@ -99,6 +129,8 @@ class Event {
               .toList(growable: false) ??
           const [],
       timeRange: json['time_range'] as String? ?? '',
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      ratingCount: (json['rating_count'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -117,5 +149,7 @@ class Event {
         'category': category,
         'tags': tags,
         'time_range': timeRange,
+        'rating': rating,
+        'rating_count': ratingCount,
       };
 }

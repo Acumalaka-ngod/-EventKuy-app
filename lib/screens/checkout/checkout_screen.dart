@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/errors.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
@@ -7,10 +8,12 @@ import '../../models/checkout_result.dart';
 import '../../models/event.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/ticket_provider.dart';
+import '../../widgets/app_icon_button.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/event_image.dart';
+import '../../widgets/form_error_banner.dart';
 import '../../widgets/payment_option.dart';
 import '../main_navigation.dart';
 
@@ -25,9 +28,14 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameFocus = FocusNode();
+  final _emailFocus = FocusNode();
+  final _phoneFocus = FocusNode();
+
   late final TextEditingController _name;
   late final TextEditingController _email;
-  final _phone = TextEditingController(text: '0812 3456 7890');
+  final _phone = TextEditingController();
   final _promoController = TextEditingController();
 
   String _method = 'GoPay';
@@ -37,7 +45,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String? _voucherMessage;
   bool _voucherValid = false;
   String? _appliedVoucher;
+  String? _checkoutError;
   final int _adminFee = 2500;
+
+  static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static final _phonePattern = RegExp(r'^\+?[0-9]{9,15}$');
 
   /// Sisa tiket; `null` berarti kuota tidak dibatasi.
   int? get _maxQty => widget.event.available;
@@ -48,8 +60,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user;
-    _name = TextEditingController(text: user?.name ?? 'Andi Pratama');
-    _email = TextEditingController(text: user?.email ?? 'andi@eventkuy.id');
+    _name = TextEditingController(text: user?.name ?? '');
+    _email = TextEditingController(text: user?.email ?? '');
   }
 
   @override
@@ -58,7 +70,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _email.dispose();
     _phone.dispose();
     _promoController.dispose();
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _phoneFocus.dispose();
     super.dispose();
+  }
+
+  String? _validateName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Nama lengkap wajib diisi.';
+    }
+    if (value.trim().length < 2) return 'Nama minimal 2 karakter.';
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
+    if (email.isEmpty) return 'Email wajib diisi.';
+    if (!_emailPattern.hasMatch(email)) return 'Format email tidak valid.';
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    final phone = (value ?? '').replaceAll(RegExp(r'[\s\-().]'), '');
+    if (phone.isEmpty) return 'Nomor HP wajib diisi.';
+    if (!_phonePattern.hasMatch(phone)) return 'Nomor HP tidak valid.';
+    return null;
   }
 
   void _changeQty(int delta) {
@@ -126,41 +163,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _processPayment() async {
-    if (_name.text.trim().isEmpty || _email.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lengkapi nama dan email pemesan terlebih dahulu.'),
-        ),
-      );
+    FocusScope.of(context).unfocus();
+
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) {
+      if (_validateName(_name.text) != null) {
+        _nameFocus.requestFocus();
+      } else if (_validateEmail(_email.text) != null) {
+        _emailFocus.requestFocus();
+      } else {
+        _phoneFocus.requestFocus();
+      }
       return;
     }
 
     if (_soldOut) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tiket event ini sudah habis.')),
-      );
+      setState(() => _checkoutError = 'Tiket event ini sudah habis.');
       return;
     }
 
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _checkoutError = null;
+    });
 
     try {
       final result = await context.read<TicketProvider>().checkout(
-            widget.event,
-            qty: _qty,
-            voucherCode: _voucherValid ? _appliedVoucher : null,
-            paymentMethod: _method,
-          );
+        widget.event,
+        qty: _qty,
+        voucherCode: _voucherValid ? _appliedVoucher : null,
+        paymentMethod: _method,
+        buyerName: _name.text.trim(),
+        buyerEmail: _email.text.trim(),
+        buyerPhone: _phone.text.replaceAll(RegExp(r'[\s\-().]'), ''),
+      );
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
       _showSuccess(result);
     } catch (error) {
       if (!mounted) return;
-      setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyError(error))),
-      );
+      setState(() {
+        _isProcessing = false;
+        _checkoutError = friendlyError(error);
+      });
     }
   }
 
@@ -195,8 +241,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.check_rounded,
-                    color: Colors.white, size: 42),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 42,
+                ),
               ),
               const SizedBox(height: 22),
               const Text(
@@ -247,8 +296,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(11),
                       ),
-                      child: const Icon(Icons.confirmation_number_rounded,
-                          color: AppTheme.violet, size: 20),
+                      child: const Icon(
+                        Icons.confirmation_number_rounded,
+                        color: AppTheme.violet,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 13),
                     Expanded(
@@ -309,8 +361,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget build(BuildContext context) {
     final subtotal = widget.event.price * _qty;
     final adminFee = _adminFee * _qty;
-    final total =
-        (subtotal + adminFee - _discount).clamp(0, double.infinity).toInt();
+    final total = (subtotal + adminFee - _discount)
+        .clamp(0, double.infinity)
+        .toInt();
 
     final leftColumn = <Widget>[
       _buildSummaryCard(),
@@ -324,20 +377,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _buildVoucherCard(),
     ];
 
-    final rightColumn = <Widget>[
-      _buildTotalCard(subtotal, adminFee, total),
-    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final twoColumns = w >= 1024;
+        final rightColumn = <Widget>[
+          _buildTotalCard(subtotal, adminFee, total, showCta: twoColumns),
+        ];
 
-    return Scaffold(
-      backgroundColor: AppTheme.canvas,
-      body: SafeArea(
-        bottom: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.maxWidth;
-            final twoColumns = w >= Breakpoints.mobile;
-
-            return Column(
+        return Scaffold(
+          backgroundColor: AppTheme.canvas,
+          body: SafeArea(
+            bottom: false,
+            child: Column(
               children: [
                 _buildHeader(context),
                 Expanded(
@@ -351,64 +403,102 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 1120),
-                        child: Column(
-                          children: [
-                                                        Text(
-                              'Checkout & Pembayaran',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: AppTheme.headingFont,
-                                fontSize: twoColumns ? 34 : 28,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -1.1,
-                                color: AppTheme.ink,
-                                height: 1.1,
-                              ),
+                        child: Form(
+                          key: _formKey,
+                          child: AutofillGroup(
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Checkout & Pembayaran',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: AppTheme.headingFont,
+                                    fontSize: twoColumns ? 34 : 28,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -1.1,
+                                    color: AppTheme.ink,
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 22),
+                                _buildSteps(),
+                                const SizedBox(height: 26),
+                                if (twoColumns)
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 145,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: leftColumn,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 20),
+                                      Expanded(
+                                        flex: 75,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: rightColumn,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      ...leftColumn,
+                                      const SizedBox(height: 18),
+                                      ...rightColumn,
+                                    ],
+                                  ),
+                              ],
                             ),
-                            const SizedBox(height: 22),
-                            _buildSteps(),
-                            const SizedBox(height: 26),
-                            if (twoColumns)
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 145,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: leftColumn,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    flex: 75,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: rightColumn,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            else
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  ...leftColumn,
-                                  const SizedBox(height: 18),
-                                  ...rightColumn,
-                                ],
-                              ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ],
-            );
-          },
+            ),
+          ),
+          bottomNavigationBar: twoColumns ? null : _buildStickyBar(total),
+        );
+      },
+    );
+  }
+
+  Widget _buildStickyBar(int total) {
+    return Container(
+      key: const ValueKey('checkout-sticky-bar'),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppTheme.border)),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_checkoutError != null) ...[
+              FormErrorBanner(message: _checkoutError!),
+              const SizedBox(height: 8),
+            ],
+            CustomButton(
+              label: _soldOut
+                  ? 'Tiket Habis'
+                  : 'Bayar Sekarang · ${formatRp(total)}',
+              loading: _isProcessing,
+              onPressed: _soldOut ? null : _processPayment,
+            ),
+          ],
         ),
       ),
     );
@@ -424,24 +514,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.border),
-              ),
-              child: const Icon(Icons.arrow_back_rounded,
-                  color: AppTheme.ink, size: 20),
-            ),
+          AppIconButton(
+            icon: Icons.arrow_back_rounded,
+            label: 'Kembali',
+            onPressed: () => Navigator.pop(context),
+            backgroundColor: Colors.white,
+            foregroundColor: AppTheme.ink,
+            borderColor: AppTheme.border,
+            iconSize: 20,
           ),
           const Expanded(
-            child: Center(
-              child: EventKuyLogo(markSize: 26, fontSize: 15),
-            ),
+            child: Center(child: EventKuyLogo(markSize: 26, fontSize: 15)),
           ),
           const SizedBox(width: 42),
         ],
@@ -473,8 +556,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final color = done
         ? AppTheme.green
         : active
-            ? AppTheme.violet
-            : Colors.white;
+        ? AppTheme.violet
+        : Colors.white;
     final textColor = done || active ? Colors.white : AppTheme.textFaint;
 
     return Column(
@@ -490,8 +573,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               color: done
                   ? AppTheme.green
                   : active
-                      ? AppTheme.violet
-                      : AppTheme.border,
+                  ? AppTheme.violet
+                  : AppTheme.border,
             ),
           ),
           alignment: Alignment.center,
@@ -516,8 +599,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             color: active
                 ? AppTheme.violet
                 : done
-                    ? AppTheme.green
-                    : AppTheme.textFaint,
+                ? AppTheme.green
+                : AppTheme.textFaint,
           ),
         ),
       ],
@@ -576,10 +659,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   '${formatTanggalSingkat(widget.event.date)} · $_qty× Regular Pass',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.muted,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: AppTheme.muted, fontSize: 11),
                 ),
               ],
             ),
@@ -616,8 +696,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   soldOut
                       ? 'Tiket habis — tidak bisa dibeli'
                       : max == null
-                          ? 'Stok tersedia'
-                          : 'Sisa $max tiket',
+                      ? 'Stok tersedia'
+                      : 'Sisa $max tiket',
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
@@ -629,6 +709,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           _qtyButton(
             icon: Icons.remove_rounded,
+            label: 'Kurangi jumlah tiket',
             onTap: soldOut || _qty <= 1 ? null : () => _changeQty(-1),
           ),
           SizedBox(
@@ -646,6 +727,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           _qtyButton(
             icon: Icons.add_rounded,
+            label: 'Tambah jumlah tiket',
             onTap: canAdd ? () => _changeQty(1) : null,
           ),
         ],
@@ -653,24 +735,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _qtyButton({required IconData icon, VoidCallback? onTap}) {
+  Widget _qtyButton({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+  }) {
     final enabled = onTap != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: enabled ? Colors.white : AppTheme.canvas,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: AppTheme.border),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: enabled ? AppTheme.ink : AppTheme.textFaint,
-        ),
-      ),
+    return AppIconButton(
+      icon: icon,
+      label: label,
+      onPressed: onTap,
+      backgroundColor: enabled ? Colors.white : AppTheme.canvas,
+      foregroundColor: enabled ? AppTheme.ink : AppTheme.textFaint,
+      borderColor: AppTheme.border,
+      iconSize: 18,
     );
   }
 
@@ -695,19 +773,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               final nameField = _field(
                 label: 'Nama Lengkap',
                 controller: _name,
-                hint: 'Andi Pratama',
+                hint: 'Nama sesuai identitas',
+                focusNode: _nameFocus,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.name],
+                validator: _validateName,
+                onFieldSubmitted: (_) => _emailFocus.requestFocus(),
               );
               final emailField = _field(
                 label: 'Email Konfirmasi Tiket',
                 controller: _email,
                 hint: 'nama@email.com',
                 keyboardType: TextInputType.emailAddress,
+                focusNode: _emailFocus,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                validator: _validateEmail,
+                onFieldSubmitted: (_) => _phoneFocus.requestFocus(),
               );
               final phoneField = _field(
                 label: 'Nomor WhatsApp / HP',
                 controller: _phone,
-                hint: '0812 3456 7890',
+                hint: '08xx xxxx xxxx',
                 keyboardType: TextInputType.phone,
+                focusNode: _phoneFocus,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.telephoneNumber],
+                validator: _validatePhone,
               );
 
               if (!wide) {
@@ -747,6 +839,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     required TextEditingController controller,
     required String hint,
     TextInputType? keyboardType,
+    FocusNode? focusNode,
+    TextInputAction textInputAction = TextInputAction.next,
+    Iterable<String>? autofillHints,
+    String? Function(String?)? validator,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -756,9 +853,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
           controller: controller,
+          focusNode: focusNode,
           keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          autofillHints: autofillHints,
+          validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          onFieldSubmitted: onFieldSubmitted,
           style: const TextStyle(fontSize: 13.5),
           decoration: InputDecoration(hintText: hint),
         ),
@@ -869,7 +972,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildTotalCard(int subtotal, int adminFee, int total) {
+  Widget _buildTotalCard(
+    int subtotal,
+    int adminFee,
+    int total, {
+    required bool showCta,
+  }) {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -940,8 +1048,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.lock_rounded,
-                    size: 13, color: AppTheme.green),
+                Icon(Icons.lock_rounded, size: 13, color: AppTheme.green),
                 SizedBox(width: 5),
                 Flexible(
                   child: Text(
@@ -958,23 +1065,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          CustomButton(
-            label: _soldOut
-                ? 'Tiket Habis'
-                : 'Bayar Sekarang · ${formatRp(total)}',
-            loading: _isProcessing,
-            onPressed: _soldOut ? null : _processPayment,
-          ),
+          if (showCta && _checkoutError != null) ...[
+            FormErrorBanner(message: _checkoutError!),
+            const SizedBox(height: 14),
+          ],
+          if (showCta) ...[
+            const SizedBox(height: 14),
+            CustomButton(
+              label: _soldOut
+                  ? 'Tiket Habis'
+                  : 'Bayar Sekarang · ${formatRp(total)}',
+              loading: _isProcessing,
+              onPressed: _soldOut ? null : _processPayment,
+            ),
+          ],
           const SizedBox(height: 12),
           const Text(
             'Dengan melanjutkan, kamu menyetujui ketentuan pembayaran EventKuy. E-tiket dikirim ke email konfirmasi.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.muted,
-              fontSize: 9,
-              height: 1.5,
-            ),
+            style: TextStyle(color: AppTheme.muted, fontSize: 9, height: 1.5),
           ),
         ],
       ),

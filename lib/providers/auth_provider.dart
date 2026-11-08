@@ -22,11 +22,12 @@ class AuthProvider extends ChangeNotifier {
   Future<AppUser> _toAppUser(User user) async {
     var name = (user.userMetadata?['name'] as String?)?.trim() ?? '';
     var role = 'pengguna';
+    String? avatarUrl;
 
     try {
       final profile = await _client
           .from('profiles')
-          .select('name, role')
+          .select('name, role, avatar_url')
           .eq('id', user.id)
           .maybeSingle();
       final profileName = profile?['name'] as String?;
@@ -36,6 +37,10 @@ class AuthProvider extends ChangeNotifier {
       final profileRole = profile?['role'] as String?;
       if (profileRole != null && profileRole.trim().isNotEmpty) {
         role = profileRole.trim();
+      }
+      final profileAvatar = profile?['avatar_url'] as String?;
+      if (profileAvatar != null && profileAvatar.trim().isNotEmpty) {
+        avatarUrl = profileAvatar.trim();
       }
     } catch (_) {
       // Profil belum terbaca — pakai metadata auth sebagai fallback.
@@ -50,6 +55,7 @@ class AuthProvider extends ChangeNotifier {
       name: name,
       email: user.email ?? '',
       role: role,
+      avatarUrl: avatarUrl,
     );
   }
 
@@ -99,6 +105,78 @@ class AuthProvider extends ChangeNotifier {
     } catch (error) {
       return friendlyError(error);
     }
+  }
+
+  /// Simpan nama dan/atau avatar baru. `avatarUrl` null berarti tidak diubah.
+  Future<String?> updateProfile({
+    required String name,
+    String? avatarUrl,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.length < 2) return 'Nama minimal 2 karakter.';
+    if (trimmed.length > 60) return 'Nama maksimal 60 karakter.';
+
+    try {
+      final current = _client.auth.currentUser;
+      if (current == null) return 'Sesi login tidak ditemukan.';
+
+      await _client.from('profiles').update({
+        'name': trimmed,
+        if (avatarUrl != null && avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
+      }).eq('id', current.id);
+
+      await _client.auth.updateUser(
+        UserAttributes(data: {'name': trimmed}),
+      );
+      await _refreshUser();
+      return null;
+    } catch (error) {
+      return friendlyError(error);
+    }
+  }
+
+  /// Ganti password setelah memverifikasi password saat ini.
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (newPassword.length < 8) {
+      return 'Password baru minimal 8 karakter.';
+    }
+    if (newPassword == currentPassword) {
+      return 'Password baru harus berbeda dari password lama.';
+    }
+
+    final storedEmail = _user?.email;
+    final email = (storedEmail != null && storedEmail.isNotEmpty)
+        ? storedEmail
+        : _client.auth.currentUser?.email;
+    if (email == null || email.isEmpty) {
+      return 'Sesi login tidak ditemukan.';
+    }
+
+    try {
+      await _client.auth.signInWithPassword(
+        email: email,
+        password: currentPassword,
+      );
+    } catch (_) {
+      return 'Password saat ini salah.';
+    }
+
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+      return null;
+    } catch (error) {
+      return friendlyError(error);
+    }
+  }
+
+  Future<void> _refreshUser() async {
+    final current = _client.auth.currentUser;
+    if (current == null) return;
+    _user = await _toAppUser(current);
+    notifyListeners();
   }
 
   Future<String?> resetPassword(String email) async {

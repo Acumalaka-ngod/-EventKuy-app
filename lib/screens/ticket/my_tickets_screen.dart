@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/errors.dart';
+
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/event.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
 import '../../providers/ticket_provider.dart';
+import '../../widgets/app_icon_button.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/ticket_item.dart';
 import '../event/event_detail_screen.dart';
@@ -101,16 +102,23 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final allTickets = context.watch<TicketProvider>().tickets;
+    final ticketProvider = context.watch<TicketProvider>();
+    final allTickets = ticketProvider.tickets;
     final user = context.watch<AuthProvider>().user;
     final events = context.watch<EventProvider>().events;
 
-    final activeCount = allTickets.where((t) => t.status.toLowerCase() != 'checked_in').length;
+    final activeCount = allTickets
+        .where((t) => t.status.toLowerCase() != 'checked_in')
+        .length;
     final doneCount = allTickets.length - activeCount;
 
     final filteredTickets = allTickets.where((t) {
-      if (_activeTab == 'Aktif') return t.status.toLowerCase() != 'checked_in';
-      if (_activeTab == 'Selesai') return t.status.toLowerCase() == 'checked_in';
+      if (_activeTab == 'Aktif') {
+        return t.status.toLowerCase() != 'checked_in';
+      }
+      if (_activeTab == 'Selesai') {
+        return t.status.toLowerCase() == 'checked_in';
+      }
       return true;
     }).toList();
 
@@ -137,7 +145,6 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              
                               Text(
                                 'Tiket & Pass Saya',
                                 style: TextStyle(
@@ -187,17 +194,34 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
                   ),
                   const SizedBox(height: 24),
                   Expanded(
-                    child: filteredTickets.isEmpty
+                    child: ticketProvider.loading && allTickets.isEmpty
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.violet,
+                            ),
+                          )
+                        : ticketProvider.error != null && allTickets.isEmpty
+                        ? _buildErrorState(ticketProvider)
+                        : filteredTickets.isEmpty
                         ? _buildEmptyState(context)
                         : GridView.builder(
-                            padding: EdgeInsets.fromLTRB(hPadding, 4, hPadding, 40),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: w < 640 ? 1 : (w < 1050 ? 2 : 3),
-                              crossAxisSpacing: 20,
-                              mainAxisSpacing: 20,
-                              mainAxisExtent: 600 *
-                                  MediaQuery.textScalerOf(context).scale(1),
+                            padding: EdgeInsets.fromLTRB(
+                              hPadding,
+                              4,
+                              hPadding,
+                              40,
                             ),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: w < 640
+                                      ? 1
+                                      : (w < 1050 ? 2 : 3),
+                                  crossAxisSpacing: 20,
+                                  mainAxisSpacing: 20,
+                                  mainAxisExtent:
+                                      600 *
+                                      MediaQuery.textScalerOf(context).scale(1),
+                                ),
                             itemCount: filteredTickets.length,
                             itemBuilder: (context, i) {
                               final t = filteredTickets[i];
@@ -205,29 +229,20 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
                               final dateLocation = ev == null
                                   ? ''
                                   : '${formatTanggal(ev.date)} · ${venueOf(ev.location)}';
-                              
+
                               return TicketItem(
                                 ticket: t,
                                 dateLocation: dateLocation,
                                 attendeeName: user?.name ?? 'Pengguna',
-                                onCheckIn: () async {
-                                  try {
-                                    await context
-                                        .read<TicketProvider>()
-                                        .checkIn(t.code);
-                                  } catch (error) {
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(friendlyError(error)),
+                                onViewDetail: ev == null
+                                    ? null
+                                    : () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              EventDetailScreen(event: ev),
+                                        ),
                                       ),
-                                    );
-                                  }
-                                },
-                                onViewDetail: ev == null ? null : () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => EventDetailScreen(event: ev)),
-                                ),
                               );
                             },
                           ),
@@ -242,24 +257,73 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
   }
 
   Widget _roundButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.border),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.ink.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return AppIconButton(
+      icon: icon,
+      label: 'Kembali',
+      onPressed: onTap,
+      backgroundColor: Colors.white,
+      foregroundColor: AppTheme.ink,
+      borderColor: AppTheme.border,
+      iconSize: 22,
+    );
+  }
+
+  Widget _buildErrorState(TicketProvider tickets) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppTheme.violetSoft,
+                borderRadius: BorderRadius.circular(40),
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                size: 50,
+                color: AppTheme.violet,
+              ),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Gagal Memuat Tiket',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppTheme.headingFont,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.ink,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              tickets.error ?? 'Periksa koneksi internet lalu coba lagi.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.muted,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: tickets.loading ? null : () => tickets.load(),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                minimumSize: const Size(220, 54),
+              ),
             ),
           ],
         ),
-        child: Icon(icon, color: AppTheme.ink, size: 22),
       ),
     );
   }
@@ -278,11 +342,17 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
                 color: AppTheme.violetSoft,
                 borderRadius: BorderRadius.circular(40),
               ),
-              child: const Icon(Icons.confirmation_number_rounded, size: 50, color: AppTheme.violet),
+              child: const Icon(
+                Icons.confirmation_number_rounded,
+                size: 50,
+                color: AppTheme.violet,
+              ),
             ),
             const SizedBox(height: 32),
             Text(
-              _activeTab == 'Semua' ? 'Belum Ada Tiket' : 'Tidak ada tiket $_activeTab',
+              _activeTab == 'Semua'
+                  ? 'Belum Ada Tiket'
+                  : 'Tidak ada tiket $_activeTab',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: AppTheme.headingFont,
@@ -295,17 +365,26 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
             const Text(
               'Jelajahi berbagai event menarik dan amankan tiket pertamamu sekarang juga!',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: AppTheme.muted, height: 1.6),
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.muted,
+                height: 1.6,
+              ),
             ),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () => Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const MainNavigation(initialIndex: 0)),
+                MaterialPageRoute(
+                  builder: (_) => const MainNavigation(initialIndex: 0),
+                ),
                 (_) => false,
               ),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 minimumSize: const Size(220, 54),
               ),
               child: const Text('Cari Event'),
@@ -318,48 +397,80 @@ class _MyTicketsScreenState extends State<MyTicketsScreen>
 
   Widget _buildTab(String label, int count) {
     final isSelected = _activeTab == label;
-    return GestureDetector(
-      onTap: () => setState(() => _activeTab = label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        constraints: const BoxConstraints(minHeight: 40),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: isSelected
-              ? const [BoxShadow(color: Color(0x141E1946), blurRadius: 10, offset: Offset(0, 3))]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected ? AppTheme.violet : AppTheme.muted,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    final semanticLabel = '$label, $count tiket';
+
+    void select() => setState(() => _activeTab = label);
+
+    return Semantics(
+      container: true,
+      button: true,
+      selected: isSelected,
+      label: semanticLabel,
+      onTap: select,
+      child: ExcludeSemantics(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: select,
+            borderRadius: BorderRadius.circular(10),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.violetSoft : Colors.white.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(8),
+                color: isSelected ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: isSelected
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x141E1946),
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ]
+                    : null,
               ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: isSelected ? AppTheme.violet : AppTheme.textFaint,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      color: isSelected ? AppTheme.violet : AppTheme.muted,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppTheme.violetSoft
+                          : Colors.white.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected
+                            ? AppTheme.violet
+                            : AppTheme.textFaint,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

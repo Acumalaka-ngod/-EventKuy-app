@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../core/motion.dart';
 import '../core/responsive.dart';
 import '../core/theme.dart';
+import '../models/event.dart';
+import '../providers/deep_link_provider.dart';
+import '../providers/event_provider.dart';
 import '../providers/favorite_provider.dart';
 import '../providers/ticket_provider.dart';
 import '../widgets/app_logo.dart';
+import 'event/event_detail_screen.dart';
 import 'explore/explore_screen.dart';
 import 'favorite/favorite_screen.dart';
 import 'home/home_screen.dart';
@@ -30,6 +36,50 @@ class _MainNavigationState extends State<MainNavigation> {
   void initState() {
     super.initState();
     _index = widget.initialIndex;
+    _handlePendingDeepLink();
+    try {
+      context.read<DeepLinkProvider>().addListener(_handlePendingDeepLink);
+    } catch (_) {
+      // DeepLinkProvider tidak terdaftar (mis. dalam beberapa widget test).
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant MainNavigation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _handlePendingDeepLink();
+  }
+
+  @override
+  void dispose() {
+    try {
+      context.read<DeepLinkProvider>().removeListener(_handlePendingDeepLink);
+    } catch (_) {
+      // DeepLinkProvider tidak terdaftar.
+    }
+    super.dispose();
+  }
+
+  /// Navigasi ke Detail Event bila ada deep link event yang menunggu.
+  void _handlePendingDeepLink() {
+    try {
+      final provider = context.read<DeepLinkProvider>();
+      final eventId = provider.pendingEventId;
+      if (eventId == null) return;
+
+      final events = context.read<EventProvider>().events;
+      final Event? event = events.where((e) => e.id == eventId).firstOrNull;
+      if (event == null) return;
+
+      provider.takePending();
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EventDetailScreen(event: event),
+        ),
+      );
+    } catch (_) {
+      // DeepLinkProvider atau EventProvider tidak tersedia.
+    }
   }
 
   static const _pages = [
@@ -44,36 +94,31 @@ class _MainNavigationState extends State<MainNavigation> {
     (
       icon: Icons.home_outlined,
       activeIcon: Icons.home_rounded,
-      label: 'Beranda'
+      label: 'Beranda',
     ),
     (
       icon: Icons.explore_outlined,
       activeIcon: Icons.explore_rounded,
-      label: 'Jelajahi'
+      label: 'Jelajahi',
     ),
     (
       icon: Icons.confirmation_number_outlined,
       activeIcon: Icons.confirmation_number_rounded,
-      label: 'Tiket'
+      label: 'Tiket',
     ),
     (
       icon: Icons.favorite_outline_rounded,
       activeIcon: Icons.favorite_rounded,
-      label: 'Favorit'
+      label: 'Favorit',
     ),
     (
       icon: Icons.person_outline_rounded,
       activeIcon: Icons.person_rounded,
-      label: 'Profil'
+      label: 'Profil',
     ),
   ];
 
   void _onTap(int i) {
-    // Saat masuk kembali ke tab Favorit, saring ulang daftarnya supaya
-    // event yang sempat dilepas (salah pencet lalu dibiarkan) tidak menumpuk.
-    if (i == 3 && _index != 3) {
-      context.read<FavoriteProvider>().syncShelf();
-    }
     setState(() => _index = i);
   }
 
@@ -114,7 +159,7 @@ class _MainNavigationState extends State<MainNavigation> {
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               border: Border.all(color: AppTheme.border),
             ),
             child: Row(
@@ -139,10 +184,10 @@ class _MainNavigationState extends State<MainNavigation> {
     final isSelected = _index == index;
 
     return InkWell(
-      // Semua layout harus lewat `_onTap` supaya perilaku tab (mis. menyaring
-      // ulang shelf favorit) sama di HP, tablet, dan desktop.
+      // Semua layout harus lewat `_onTap` supaya perilaku tab sama di HP,
+      // tablet, dan desktop.
       onTap: () => _onTap(index),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -178,12 +223,10 @@ class _MainNavigationState extends State<MainNavigation> {
       body: Row(
         children: [
           Container(
-            width: 88,
+            width: 96,
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(
-                right: BorderSide(color: AppTheme.border),
-              ),
+              border: Border(right: BorderSide(color: AppTheme.border)),
             ),
             child: Column(
               children: [
@@ -194,38 +237,66 @@ class _MainNavigationState extends State<MainNavigation> {
                 for (var i = 0; i < _items.length; i++)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: Tooltip(
-                      message: _items[i].label,
-                      child: InkWell(
-                        onTap: () => _onTap(i),
-                        borderRadius: BorderRadius.circular(14),
-                        child: SizedBox(
-                          width: 58,
-                          height: 50,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _buildBadgeIcon(
-                                icon: _index == i
-                                    ? _items[i].activeIcon
-                                    : _items[i].icon,
-                                count: _badgeFor(i, ticketCount, favCount),
-                                color: _index == i
-                                    ? AppTheme.ink
-                                    : AppTheme.muted,
-                                size: 22,
+                    child: Semantics(
+                      key: ValueKey('rail-item-$i'),
+                      container: true,
+                      button: true,
+                      selected: _index == i,
+                      label: _items[i].label,
+                      onTap: () => _onTap(i),
+                      child: ExcludeSemantics(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _onTap(i),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                            child: SizedBox(
+                              width: 72,
+                              height: 64,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildBadgeIcon(
+                                    icon: _index == i
+                                        ? _items[i].activeIcon
+                                        : _items[i].icon,
+                                    count: _badgeFor(i, ticketCount, favCount),
+                                    color: _index == i
+                                        ? AppTheme.ink
+                                        : AppTheme.muted,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _items[i].label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: _index == i
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                      color: _index == i
+                                          ? AppTheme.ink
+                                          : AppTheme.muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  AnimatedContainer(
+                                    duration: AppMotion.duration(
+                                      context,
+                                      const Duration(milliseconds: 180),
+                                    ),
+                                    height: 2,
+                                    width: _index == i ? 14 : 0,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.violet,
+                                      borderRadius: BorderRadius.circular(1),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 3),
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                height: 2,
-                                width: _index == i ? 14 : 0,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.violet,
-                                  borderRadius: BorderRadius.circular(1),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -253,9 +324,7 @@ class _MainNavigationState extends State<MainNavigation> {
             width: 240,
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(
-                right: BorderSide(color: AppTheme.border),
-              ),
+              border: Border(right: BorderSide(color: AppTheme.border)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -308,10 +377,10 @@ class _MainNavigationState extends State<MainNavigation> {
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 2),
       child: Material(
         color: active ? AppTheme.ink : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         child: InkWell(
           onTap: () => _onTap(index),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
           child: Container(
             constraints: const BoxConstraints(minHeight: 50),
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
@@ -364,7 +433,7 @@ class _MainNavigationState extends State<MainNavigation> {
               constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
               decoration: BoxDecoration(
                 color: AppTheme.coral,
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                 border: Border.all(color: Colors.white, width: 2),
               ),
               alignment: Alignment.center,
@@ -389,7 +458,7 @@ class _MainNavigationState extends State<MainNavigation> {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: AppTheme.coral,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
       ),
       child: Text(
         count > 9 ? '9+' : '$count',
@@ -402,3 +471,4 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
+

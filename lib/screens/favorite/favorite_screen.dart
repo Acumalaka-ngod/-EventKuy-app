@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../providers/event_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../widgets/app_icon_button.dart';
 import '../../widgets/event_card.dart';
 import '../event/event_detail_screen.dart';
 import '../main_navigation.dart';
@@ -15,8 +17,7 @@ class FavoriteScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final fav = context.watch<FavoriteProvider>();
     final events = context.watch<EventProvider>().events;
-    final list = events.where((e) => fav.onShelf(e.id)).toList();
-    final activeCount = list.where((e) => fav.isFav(e.id)).length;
+    final list = events.where((e) => fav.isFav(e.id)).toList();
 
     return Scaffold(
       backgroundColor: AppTheme.canvas,
@@ -63,7 +64,17 @@ class FavoriteScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  if (list.isEmpty)
+                  if (fav.loading && fav.ids.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.violet,
+                        ),
+                      ),
+                    )
+                  else if (fav.error != null && fav.ids.isEmpty)
+                    Expanded(child: _buildErrorState(fav))
+                  else if (list.isEmpty)
                     Expanded(child: _buildEmptyState(context))
                   else ...[
                     Padding(
@@ -72,7 +83,7 @@ class FavoriteScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              '$activeCount Event Disimpan',
+                              '${list.length} Event Disimpan',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -81,14 +92,20 @@ class FavoriteScreen extends StatelessWidget {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => fav.clearFavorites(),
+                            onPressed: () => _confirmClear(context, fav),
                             style: TextButton.styleFrom(
                               foregroundColor: AppTheme.red,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              minimumSize: const Size(0, 48),
                             ),
                             child: const Text(
                               'Hapus Semua',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -126,25 +143,116 @@ class FavoriteScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _confirmClear(BuildContext context, FavoriteProvider fav) async {
+    final count = fav.ids.length;
+    if (count == 0) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus Semua Favorit?'),
+        content: Text('$count event akan dihapus dari daftar favoritmu.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final removed = fav.ids.toList(growable: false);
+    await fav.clearFavorites();
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('${removed.length} event dihapus dari favorit.'),
+          action: SnackBarAction(
+            label: 'Urungkan',
+            onPressed: () => fav.restoreFavorites(removed),
+          ),
+        ),
+      );
+  }
+
   Widget _roundButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.border),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.ink.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return AppIconButton(
+      icon: icon,
+      label: 'Kembali',
+      onPressed: onTap,
+      backgroundColor: Colors.white,
+      foregroundColor: AppTheme.ink,
+      borderColor: AppTheme.border,
+      iconSize: 22,
+    );
+  }
+
+  Widget _buildErrorState(FavoriteProvider fav) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppTheme.violetSoft,
+                borderRadius: BorderRadius.circular(40),
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                size: 50,
+                color: AppTheme.violet,
+              ),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Gagal Memuat Favorit',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppTheme.headingFont,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.ink,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              fav.error ?? 'Periksa koneksi internet lalu coba lagi.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.muted,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: fav.loading ? null : () => fav.load(),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                minimumSize: const Size(220, 54),
+              ),
             ),
           ],
         ),
-        child: Icon(icon, color: AppTheme.ink, size: 22),
       ),
     );
   }
@@ -195,14 +303,19 @@ class FavoriteScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (_) => const MainNavigation(initialIndex: 1)),
+                  MaterialPageRoute(
+                    builder: (_) => const MainNavigation(initialIndex: 1),
+                  ),
                   (_) => false,
                 );
               },
               icon: const Icon(Icons.explore_rounded, size: 20),
               label: const Text('Jelajahi Event'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 minimumSize: const Size(220, 54),
               ),
             ),

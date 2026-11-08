@@ -54,9 +54,8 @@ class SectionHeader extends StatelessWidget {
             onPressed: onSeeAll,
             style: TextButton.styleFrom(
               foregroundColor: AppTheme.violet,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 48),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,

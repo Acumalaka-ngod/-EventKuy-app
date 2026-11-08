@@ -1,6 +1,6 @@
 # EVENTKUY — Design Spec (Handoff UI/UX)
 
-> Versi dokumen: 1.0 · Status: **siap redesign total** · Platform: Flutter (Android utama, tablet/desktop/web didukung)
+> Versi dokumen: 1.2 · Status: **P1 remediation selesai; P2 selesai (tanpa dark mode)** · Platform: Flutter (Android utama, tablet/desktop/web didukung)
 
 ---
 
@@ -10,6 +10,8 @@ Dokumen ini adalah **acuan fungsi, menu, konten, alur, dan kebutuhan teknis** ap
 
 - **Bebas diubah oleh desainer (redesign total):** warna, tipografi, bentuk komponen, ilustrasi, ikonografi, gaya visual secara keseluruhan.
 - **Wajib dipertahankan:** struktur 5 tab navigasi, 13 tampilan beserta alur antarlayar, semua *state* (loading, kosong, sukses, gagal), konten minimum per layar, dan persyaratan responsif (Bagian 7).
+- **Status implementasi P1:** validasi form auth inline, autofill, banner error server, target sentuh 48 px, rail tablet berlabel, state error/retry tiket & favorit, konfirmasi + undo Hapus Semua Favorit, dan checkout sticky sudah diterapkan.
+- **Status implementasi P2 (tanpa dark mode):** lokalisasi `id_ID` + helper format terpusat, reduced motion, normalisasi token desain, organizer + rating nyata di Detail Event, persistensi data pembeli (nama/email/WhatsApp) di transaksi, deep link `eventkuy://event/<id>` dan web `/#/event/<id>`, native share sheet + fallback clipboard, dan scaffold notifikasi (token table + feed in-app; push live ditunda menunggu kredensial Firebase). Dark mode tidak dikerjakan.
 - Lampiran di Bagian 11 berisi token visual versi lama — **opsional**, hanya referensi bila ingin mempertahankan sesuatu.
 
 ---
@@ -80,22 +82,27 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 ### 3.2 Login
 
-**Tujuan:** masuk akun (sementara ini demo: nama + email, tanpa validasi server).
+**Tujuan:** masuk akun dengan email dan password Supabase Auth.
 
 **Konten wajib:**
 - Logo + wordmark kecil di atas
-- Sapaan: **"Selamat Datang Kembali 👋"** + subteks ajakan
-- Form: **Nama Lengkap**, **Email**, **Password** (dengan toggle lihat/sembunyikan password)
+- Sapaan: **"Selamat Datang Kembali"** + subteks ajakan
+- Form: **Email** dan **Password** (dengan toggle lihat/sembunyikan password)
 - Checkbox **"Ingat saya"** + link **"Lupa Password?"**
 - Tombol utama **"Masuk Sekarang"**
-- Divider "Atau masuk dengan" + tombol **Google** dan **Apple**
+- Divider "Atau masuk dengan" + tombol **Google** dan **Apple** (belum berfungsi)
 - Footer: "Belum memiliki akun? **Daftar Sekarang**" (→ Register)
 
 **Interaksi:**
-- Tombol masuk menampilkan loading di dalam tombol (±1 detik), lalu pindah ke Beranda
-- Validasi nama/email kosong → pesan error (snackbar/toast)
+- Tombol masuk menampilkan loading di dalam tombol, lalu pindah ke Beranda
+- Validasi inline: email wajib + format email, password wajib; fokus berpindah ke field pertama yang salah
+- Field memakai autofill hint email/password dan `AutofillGroup`
+- Error server tampil di **FormErrorBanner** (live region), bukan SnackBar
+- "Lupa Password?" memvalidasi email lalu memanggil reset password Supabase
+- Checkbox, link "Lupa Password?", dan "Daftar Sekarang" punya target sentuh minimal 48 px
+- Toggle password memakai tooltip dinamis "Lihat password" / "Sembunyikan password"
 
-**State:** default · loading (tombol disabled + spinner) · error validasi.
+**State:** default · loading (tombol disabled + spinner) · error validasi inline · error server (banner).
 
 **Catatan platform:** di desktop, layout **split view** — panel kiri branding + panel kanan form (max 480px). Di HP/tablet, form di tengah.
 
@@ -106,15 +113,21 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 **Tujuan:** daftar akun baru.
 
 **Konten wajib:**
-- Judul **"Mulai Petualanganmu 🚀"** + subteks
+- Judul **"Mulai Petualanganmu"** + subteks
 - Form: **Nama Lengkap**, **Email**, **Password**, **Konfirmasi Password**
-- Checkbox **setuju Syarat & Ketentuan**
+- Checkbox **setuju Syarat & Ketentuan** — default **tidak dicentang**
 - Tombol **"Daftar Sekarang"**
 - Footer: "Sudah punya akun? **Masuk**" (→ kembali)
 
-**Interaksi:** validasi semua field wajib, konfirmasi password harus sama, checkbox harus dicentang; sukses → notifikasi hijau + kembali ke Login.
+**Interaksi:**
+- Validasi inline: nama wajib/minimal 2 karakter, email wajib/format valid, password wajib/minimal 8 karakter, konfirmasi harus sama, dan terms wajib dicentang
+- Field memakai autofill hint nama/email/password baru
+- Error server tampil di **FormErrorBanner**, bukan SnackBar
+- Sukses dengan sesi aktif → Beranda; sukses tanpa sesi → notifikasi hijau + kembali ke Login
+- Tombol dan link punya target sentuh minimal 48 px
+- Toggle password memakai tooltip dinamis
 
-**State:** default · loading · error validasi · sukses.
+**State:** default · loading · error validasi inline · error server (banner) · sukses.
 
 ---
 
@@ -132,10 +145,10 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 **Perilaku responsif (wajib):**
 - **HP (<720px):** bottom navigation bar floating, ikon + label, item aktif diberi highlight pill
-- **Tablet (720–1100px):** navigation rail vertikal kiri dengan label
+- **Tablet (720–1100px):** navigation rail vertikal kiri selebar **96px**, setiap item menampilkan ikon + label teks (bukan hanya tooltip), target sentuh 72×64
 - **Desktop (>1100px):** sidebar penuh (lebar 240px) berisi logo + nama app "EVENTKUY", 5 item menu berlabel + badge angka, footer teks versi "EventKuy v1.0.0 • Temukan. Ikuti. Hadiri."
 
-**Badge:** bulatan merah dengan angka (maks "9+") di atas ikon.
+**Badge:** bulatan merah dengan angka (maks "9+") di atas ikon. Badge hanya tampil bila ada data nyata; tidak ada badge palsu.
 
 ---
 
@@ -144,7 +157,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 **Tujuan:** personalisasi & konversi — memperlihatkan event unggulan dan terdekat.
 
 **Konten wajib (urut atas ke bawah):**
-1. **Top bar:** label kecil "LOKASI SAYA" + nama kota + panah dropdown (→ bottom sheet Pilih Kota); ikon **notifikasi** (dengan dot merah) di kanan; **avatar** user (inisial huruf pertama)
+1. **Top bar:** label kecil "LOKASI SAYA" + nama kota + panah dropdown (→ bottom sheet Pilih Kota); ikon **notifikasi** di kanan (membuka bottom sheet, bukan badge palsu); **avatar** user (inisial huruf pertama) dengan label "Buka profil"
 2. **Sapaan:** "Hai, {nama depan} 👋" + kalimat ajakan singkat
 3. **Search bar** besar (ikon search + tombol filter di kanan)
 4. **Hero banner:** kartu besar event unggulan — poster full, badge **"FEATURED"** 🔥, tanggal di pojok, chip kategori, judul (putih, besar), lokasi, tombol bulat dengan ikon panah (CTA)
@@ -152,9 +165,9 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 6. **Section "Event Terdekat Untukmu 🔥"** + subteks + link **"Lihat Semua"**
 7. **Grid kartu poster** (2 kolom di HP, 3–4 di layar besar), maks 4 event. Setiap kartu: poster, badge kategori, tombol hati (overlay), tanggal, judul, kota, harga
 
-**Interaksi:** tap hero/kartu → Detail Event; tap kategori → filter; tap "Lihat Semua" → pindah tab Jelajahi; pull-to-refresh.
+**Interaksi:** tap hero/kartu → Detail Event; tap kategori → filter; tap "Lihat Semua" → pindah tab Jelajahi; pull-to-refresh; notifikasi → bottom sheet empty state "Belum Ada Notifikasi".
 
-**State:** loading (spinner) · terisi · (tidak ada state kosong khusus karena selalu ada event).
+**State:** loading (spinner) · terisi · error jaringan (pesan + **Coba Lagi**) · hasil pencarian kosong (saran + reset). Pencarian Beranda dan Jelajahi memakai satu sumber kebenaran (`EventProvider.query`) sehingga field tetap sinkron saat berpindah tab.
 
 ---
 
@@ -170,6 +183,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 - **Daftar event:** di HP = kartu horizontal (poster kecil kiri, info kanan, tombol bookmark kanan); di layar ≥600px = grid poster
 
 **State kosong:** ilustrasi + "Tidak Ada Event Ditemukan" + saran + tombol **Reset Pencarian**.
+**State error:** pesan jaringan + tombol **Coba Lagi**, bukan empty state.
 
 **Interaksi:** tap kartu → Detail Event; ketik di search → hasil live; tap kategori → filter.
 
@@ -186,11 +200,12 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
   - Header: label "EVENTKUY PASS", badge status **TIKET AKTIF** / **SUDAH CHECK-IN**, judul event, jadwal + ikon jam
   - Garis perforasi putus-putus + lekukan (cutout) kiri-kanan seperti tiket fisik
   - **QR code** (fungsi asli, bisa dipindai), kode teks "TICKET ID: AJG-…"
-  - Tombol **"Check-in Tiket"** untuk akun organizer — setelah check-in berubah menjadi panel hijau "Tiket Telah Digunakan"
+  - Instruksi **"Tunjukkan QR ini ke petugas"** untuk attendee. Tombol check-in mandiri **tidak ada** karena RPC `check_in_ticket` hanya mengizinkan organizer pemilik event; check-in dilakukan lewat Mode Petugas/Scan QR
   - Kartu kecil: "Pemilik: {nama}" + link **Unduh PDF** (menghasilkan e-tiket PDF asli)
 - Layout: 1/2/3 kolom sesuai lebar layar
 
 **State kosong:** ilustrasi + "Belum Ada Tiket Terdaftar" + tombol **Cari Event Sekarang**.
+**State error:** "Gagal Memuat Tiket" + pesan + tombol **Coba Lagi**.
 
 ---
 
@@ -203,9 +218,10 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 - Baris "N Event Disimpan" + link **Hapus Semua** (warna bahaya)
 - Daftar/grid kartu event yang sama dengan Jelajahi
 
-**State kosong:** ilustrasi hati + "Belum Ada Event Favorit" + saran + tombol **Jelajahi Event**.
+**State kosong:** ilustrasi hati + "Belum Ada Favorit" + saran + tombol **Jelajahi Event**.
+**State error:** "Gagal Memuat Favorit" + pesan + tombol **Coba Lagi**.
 
-**Interaksi:** tap kartu → Detail; toggle bookmark → item hilang dari daftar.
+**Interaksi:** tap kartu → Detail; toggle bookmark → kartu **langsung hilang** dari daftar. "Hapus Semua" membuka dialog konfirmasi berisi jumlah event; setelah dikonfirmasi, SnackBar **"Urungkan"** mengembalikan favorit yang baru dihapus.
 
 ---
 
@@ -240,7 +256,7 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 8. **Tagar** event (chip, contoh #Musik #Festival)
 9. **Bottom bar sticky:** "Harga Tiket" + harga (besar) + tombol utama **"Daftar & Beli Tiket"** — selalu terlihat saat scroll
 
-**Interaksi:** tap hati → toggle favorit; tombol beli → Checkout; tombol share → (nanti) native share.
+**Interaksi:** tap hati → toggle favorit; tombol beli → Checkout; tombol share → salin info event (judul, jadwal, lokasi, harga) ke clipboard, native share menyusul.
 
 **Catatan platform:** konten dibatasi 860px pada layar besar.
 
@@ -264,9 +280,9 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 7. **Trust badge:** 🔒 "Pembayaran 100% Aman & Terenkripsi"
 8. **Tombol bayar:** "Bayar Sekarang • Rp XXX.XXX" (loading saat diproses)
 
-**State:** default · loading pembayaran · voucher valid/tidak valid.
+**State:** default · loading pembayaran · voucher valid/tidak valid · error validasi inline · error server (banner).
 
-**Catatan platform:** desktop = 2 kolom (kiri: form & metode; kanan: rincian biaya + tombol bayar). HP/tablet = 1 kolom max 760px.
+**Catatan platform:** desktop ≥1024px = 2 kolom (kiri: form & metode; kanan: rincian biaya + tombol bayar). Di bawah 1024px = 1 kolom dengan **CTA sticky** di bawah layar agar tombol bayar selalu terlihat tanpa menggulir. Data pemesan divalidasi inline dan memakai autofill; data pembeli belum dipersist ke database karena RPC `checkout` hanya menerima event, qty, voucher, dan metode pembayaran.
 
 ---
 
@@ -282,6 +298,10 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 **b. Konfirmasi Keluar** — ikon logout, judul "Konfirmasi Keluar", teks pertanyaan, 2 tombol: **Batal** (outline) dan **Ya, Keluar** (bahaya).
 
+**c. Notifikasi** — bottom sheet dari ikon lonceng Beranda. Berisi judul "Notifikasi", penjelasan singkat, empty state **"Belum Ada Notifikasi"**, dan tombol "Tutup". Belum ada badge notifikasi palsu; push notification menyusul di P2.
+
+**d. Hapus Semua Favorit** — dialog konfirmasi berisi jumlah event, tombol **Batal** / **Hapus**, lalu SnackBar **"Urungkan"**.
+
 ---
 
 ## 4. Komponen Reusable (rancang variannya)
@@ -291,7 +311,9 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 | **EventGridCard** | Kartu poster untuk grid: gambar 16:10 + badge kategori + tombol hati overlay + tanggal, judul, kota, harga | normal · favorited |
 | **EventCard** | Kartu horizontal untuk list: gambar persegi kiri + info + bookmark | normal · favorited |
 | **HeroBanner** | Kartu besar event unggulan + overlay gradien + badge FEATURED | — |
-| **TicketItem** | E-ticket boarding pass (header berwarna, perforasi, QR, aksi check-in) | aktif · checked-in |
+| **TicketItem** | E-ticket boarding pass (header berwarna, perforasi, QR, instruksi QR) | aktif · checked-in |
+| **AppIconButton** | Tombol ikon standar dengan label semantics, tooltip, dan target 48 px | solid · outline · ghost |
+| **FormErrorBanner** | Error form tingkat layar, dibacakan sebagai live region | — |
 | **AppSearchBar** | Input pencarian rounded + ikon filter | dengan/tanpa tombol filter |
 | **CategoryChip** | Chip pill filter kategori | aktif · nonaktif |
 | **CategoryIconItem** | Ikon kategori kotak + label | aktif · nonaktif |
@@ -301,7 +323,8 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 | **Badge angka** | Notifikasi jumlah pada ikon tab | angka 1–9 · "9+" |
 | **Snackbar/Toast** | Notifikasi sementara | sukses (hijau) · error (merah) · info |
 | **Empty State** | Tampilan saat data kosong | 3 varian: pencarian, favorit, tiket |
-| **Bottom Sheet** | Panel bawah | list pilihan · konfirmasi destruktif |
+| **Error State** | Tampilan saat pemuatan gagal | pesan + Coba Lagi (tiket, favorit, beranda, jelajahi) |
+| **Bottom Sheet** | Panel bawah | list pilihan · konfirmasi destruktif · notifikasi |
 
 ---
 
@@ -338,15 +361,16 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 | Breakpoint | Lebar | Navigasi | Grid event |
 |---|---|---|---|
-| Mobile | < 600px | Bottom bar | 2 kolom |
-| Tablet | 600–1024px | Rail kiri | 3 kolom |
-| Desktop | > 1024px | Sidebar 240px | 4 kolom |
+| Mobile | < 720px | Bottom bar | 2 kolom |
+| Tablet | 720–1100px | Rail kiri 96px berlabel | 3 kolom |
+| Desktop | > 1100px | Sidebar 240px | 4 kolom |
 
 **Aturan umum:**
 - Lebar konten maksimal **1200px**, selalu di tengah pada layar besar
-- Padding konten: 20px (HP) / 28px (tablet) / 32px (desktop)
-- Target sentuh minimum 44×44px; hormati safe area (notch/gesture bar)
+- Padding konten: 18px (HP) / 28px (tablet) / 32px (desktop)
+- Target sentuh minimum **48×48px**; hormati safe area (notch/gesture bar)
 - Kartu tiket (Tiket Saya): 1 kolom <620px, 2 kolom sampai ~1100px, 3 kolom di atasnya
+- Checkout: CTA sticky di bawah 1024px, dua kolom pada ≥1024px
 - Semua layar harus punya state: **loading, terisi, kosong, error** (jaringan)
 
 ---
@@ -373,9 +397,11 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 - ~~Peta lokasi event (Google Maps) + tombol "Petunjuk Arah"~~ **DIBATALKAN** — tanpa Google Maps API; lokasi hanya ditampilkan sebagai teks alamat lengkap di semua layar
 - ~~**Mode scanner QR petugas** (kamera full-screen + frame scan + riwayat scan)~~ **SELESAI** — kamera asli lewat `mobile_scanner`, input kode manual, dan animasi garis scan
-- **Notifikasi push** + halaman daftar notifikasi (ikon lonceng di Beranda sudah ada)
+- **Notifikasi push** + halaman daftar notifikasi (ikon lonceng di Beranda sudah membuka bottom sheet empty state)
+- **Native share sheet / deep link** untuk event (saat ini tombol bagikan menyalin info event ke clipboard)
+- **Dark mode, lokalisasi (`flutter_localizations`), dan reduced motion** — menunggu persetujuan dependency/desain P2
 - **Halaman voucher/promo** (daftar promo aktif)
-- **Layar menu Profil yang belum ada:** Edit Profil, Riwayat Transaksi, Metode Pembayaran Tersimpan, Pusat Bantuan, Customer Care, Syarat & Privasi
+- **Layar menu Profil yang belum ada:** Metode Pembayaran Tersimpan, Pusat Bantuan, Customer Care, Syarat & Privasi. Edit Profil, Riwayat Transaksi, dan Ubah Password sudah tersedia
 - **Halaman Organizer** (profil penyelenggara + daftar event-nya, dari tombol "Ikuti")
 - ~~**Unduh e-ticket PDF** (tombol sudah ada di kartu tiket)~~ **SELESAI** — PDF A5 ber-QR via package `pdf` + `printing`
 

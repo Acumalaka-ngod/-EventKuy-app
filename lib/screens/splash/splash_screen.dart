@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/favorite_provider.dart';
@@ -20,6 +21,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  bool _motionConfigured = false;
 
   @override
   void initState() {
@@ -37,8 +39,20 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _animController, curve: Curves.easeIn),
     );
 
-    _animController.forward();
     _boot();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionConfigured) return;
+    _motionConfigured = true;
+    if (AppMotion.reduced(context)) {
+      _animController.duration = Duration.zero;
+      _animController.value = 1;
+    } else {
+      _animController.forward();
+    }
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
+import 'app_icon_button.dart';
 
 /// Search bar putih ber-border dengan tombol filter gelap di kanan.
 class AppSearchBar extends StatefulWidget {
@@ -22,18 +23,30 @@ class AppSearchBar extends StatefulWidget {
 
 class _AppSearchBarState extends State<AppSearchBar> {
   late final TextEditingController _controller;
+  late final bool _ownsController;
   bool _hasText = false;
+
+  void _handleControllerChanged() {
+    final has = _controller.text.isNotEmpty;
+    if (has != _hasText) {
+      setState(() => _hasText = has);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _ownsController = widget.controller == null;
     _controller = widget.controller ?? TextEditingController();
-    _controller.addListener(() {
-      final has = _controller.text.isNotEmpty;
-      if (has != _hasText) {
-        setState(() => _hasText = has);
-      }
-    });
+    _hasText = _controller.text.isNotEmpty;
+    _controller.addListener(_handleControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_handleControllerChanged);
+    if (_ownsController) _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -61,6 +74,7 @@ class _AppSearchBarState extends State<AppSearchBar> {
             child: TextField(
               controller: _controller,
               onChanged: widget.onChanged,
+              textInputAction: TextInputAction.search,
               style: const TextStyle(fontSize: 14, color: AppTheme.ink),
               decoration: InputDecoration(
                 filled: false,
@@ -78,31 +92,25 @@ class _AppSearchBarState extends State<AppSearchBar> {
             ),
           ),
           if (_hasText)
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.close_rounded,
-                  size: 17, color: AppTheme.textFaint),
+            AppIconButton(
+              icon: Icons.close_rounded,
+              label: 'Hapus pencarian',
               onPressed: () {
                 _controller.clear();
                 widget.onChanged?.call('');
               },
+              backgroundColor: Colors.transparent,
+              foregroundColor: AppTheme.textFaint,
+              iconSize: 17,
             ),
           if (widget.onFilterTap != null)
-            GestureDetector(
-              onTap: widget.onFilterTap,
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.ink,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: const Icon(
-                  Icons.tune_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
+            AppIconButton(
+              icon: Icons.tune_rounded,
+              label: 'Filter lokasi',
+              onPressed: widget.onFilterTap,
+              backgroundColor: AppTheme.ink,
+              foregroundColor: Colors.white,
+              iconSize: 20,
             ),
         ],
       ),

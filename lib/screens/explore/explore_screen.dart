@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/event.dart';
 import '../../providers/event_provider.dart';
+import '../../widgets/app_icon_button.dart';
 import '../../widgets/app_search_bar.dart';
 import '../../widgets/category_chip.dart';
 import '../../widgets/event_card.dart';
@@ -17,6 +19,8 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  final _searchController = TextEditingController();
+  EventProvider? _eventProvider;
   String _sort = 'Semua';
   String? _city;
 
@@ -29,6 +33,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final provider = context.read<EventProvider>();
       if (provider.events.isEmpty) provider.loadEvents();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<EventProvider>();
+    if (!identical(_eventProvider, provider)) {
+      _eventProvider?.removeListener(_syncSearchField);
+      _eventProvider = provider;
+      _eventProvider!.addListener(_syncSearchField);
+      _syncSearchField();
+    }
+  }
+
+  void _syncSearchField() {
+    final query = _eventProvider?.query ?? '';
+    if (_searchController.text == query) return;
+    _searchController.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+  }
+
+  @override
+  void dispose() {
+    _eventProvider?.removeListener(_syncSearchField);
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _openDetail(Event e) {
@@ -105,7 +137,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           child: Row(
             children: [
               Icon(
-                value == null ? Icons.public_rounded : Icons.location_on_rounded,
+                value == null
+                    ? Icons.public_rounded
+                    : Icons.location_on_rounded,
                 size: 20,
                 color: active ? AppTheme.violet : AppTheme.muted,
               ),
@@ -121,7 +155,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
               ),
               if (active)
-                const Icon(Icons.check_circle_rounded, color: AppTheme.violet, size: 20),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppTheme.violet,
+                  size: 20,
+                ),
             ],
           ),
         ),
@@ -135,7 +173,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     var events = provider.events;
     if (_city != null) {
-      events = events.where((e) => cityOf(e.location).contains(_city!)).toList();
+      events = events
+          .where((e) => cityOf(e.location).contains(_city!))
+          .toList();
     }
     events = [...events];
     if (_sort == 'Terpopuler') {
@@ -195,13 +235,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     padding: EdgeInsets.symmetric(horizontal: hPadding),
                     child: AppSearchBar(
                       hint: 'Cari event, kategori, atau lokasi...',
+                      controller: _searchController,
                       onChanged: provider.setQuery,
                       onFilterTap: _showCityPicker,
                     ),
                   ),
                   const SizedBox(height: 20),
                   SizedBox(
-                    height: 46,
+                    height: 48,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       padding: EdgeInsets.symmetric(horizontal: hPadding),
@@ -231,32 +272,46 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               color: AppTheme.violet,
                             ),
                           )
+                        : provider.error != null && provider.events.isEmpty
+                        ? _buildErrorState(provider)
                         : events.isEmpty
-                            ? _buildEmptyState(provider)
-                            : isWide
-                                ? GridView.builder(
-                                    padding: EdgeInsets.fromLTRB(hPadding, 2, hPadding, 40),
-                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: columns,
-                                      crossAxisSpacing: 18,
-                                      mainAxisSpacing: 18,
-                                      childAspectRatio: eventGridAspect(w),
-                                    ),
-                                    itemCount: events.length,
-                                    itemBuilder: (_, i) => EventGridCard(
-                                      event: events[i],
-                                      onTap: () => _openDetail(events[i]),
-                                    ),
-                                  )
-                                : ListView.separated(
-                                    padding: EdgeInsets.fromLTRB(hPadding, 2, hPadding, 40),
-                                    itemCount: events.length,
-                                    separatorBuilder: (_, _) => const SizedBox(height: 16),
-                                    itemBuilder: (_, i) => EventCard(
-                                      event: events[i],
-                                      onTap: () => _openDetail(events[i]),
-                                    ),
-                                  ),
+                        ? _buildEmptyState(provider)
+                        : isWide
+                        ? GridView.builder(
+                            padding: EdgeInsets.fromLTRB(
+                              hPadding,
+                              2,
+                              hPadding,
+                              40,
+                            ),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  crossAxisSpacing: 18,
+                                  mainAxisSpacing: 18,
+                                  childAspectRatio: eventGridAspect(w),
+                                ),
+                            itemCount: events.length,
+                            itemBuilder: (_, i) => EventGridCard(
+                              event: events[i],
+                              onTap: () => _openDetail(events[i]),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: EdgeInsets.fromLTRB(
+                              hPadding,
+                              2,
+                              hPadding,
+                              40,
+                            ),
+                            itemCount: events.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (_, i) => EventCard(
+                              event: events[i],
+                              onTap: () => _openDetail(events[i]),
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -300,10 +355,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: chips,
-          ),
+          SingleChildScrollView(scrollDirection: Axis.horizontal, child: chips),
           const SizedBox(height: 8),
           countLabel,
         ],
@@ -321,61 +373,114 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Widget _quickItem(String label, bool compact) {
     final selected = _sort == label;
-    return GestureDetector(
+    return Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      label: label,
       onTap: () => setState(() => _sort = label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        constraints: const BoxConstraints(minHeight: 36),
-        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 16),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: selected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x1A140F3C),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          style: TextStyle(
-            color: selected ? AppTheme.ink : AppTheme.muted,
-            fontSize: compact ? 12 : 13,
-            fontWeight: FontWeight.w700,
+      child: ExcludeSemantics(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => setState(() => _sort = label),
+            borderRadius: BorderRadius.circular(10),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+              padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: selected
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x1A140F3C),
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: selected ? AppTheme.ink : AppTheme.muted,
+                  fontSize: compact ? 12 : 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _roundButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.border),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.ink.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+  Widget _roundButton({required IconData icon, required VoidCallback onTap}) {
+    return AppIconButton(
+      icon: icon,
+      label: 'Kembali',
+      onPressed: onTap,
+      backgroundColor: Colors.white,
+      foregroundColor: AppTheme.ink,
+      borderColor: AppTheme.border,
+      iconSize: 22,
+    );
+  }
+
+  Widget _buildErrorState(EventProvider provider) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppTheme.violetSoft,
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                size: 42,
+                color: AppTheme.violet,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Gagal Memuat Event',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppTheme.headingFont,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.ink,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              provider.error ?? 'Periksa koneksi internet lalu coba lagi.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.muted,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => provider.loadEvents(force: true),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(200, 52)),
             ),
           ],
         ),
-        child: Icon(icon, color: AppTheme.ink, size: 22),
       ),
     );
   }
@@ -429,7 +534,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 setState(() => _city = null);
               },
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 minimumSize: const Size(200, 54),
               ),
               child: const Text('Reset Pencarian'),

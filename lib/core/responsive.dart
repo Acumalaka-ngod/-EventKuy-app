@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 /// Breakpoint global EventKuy (mengikuti prototipe Figma):
-/// - Mobile  : lebar <= 720  (bottom bar mengambang)
-/// - Tablet  : 720 - 1100    (rail ikon 88px)
-/// - Desktop : > 1100        (sidebar 240px)
+/// - Mobile  : lebar < 720   (bottom bar mengambang)
+/// - Tablet  : 720 - 1100    (rail ikon 96px berlabel)
+/// - Desktop : >= 1100       (sidebar 240px)
 class Breakpoints {
   static const double mobile = 720;
   static const double tablet = 1100;

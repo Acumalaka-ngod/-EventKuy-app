@@ -1,9 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config.dart';
+import '../models/app_notification.dart';
 import '../models/check_in_result.dart';
 import '../models/checkout_result.dart';
 import '../models/event.dart';
 import '../models/ticket.dart';
+import '../models/transaction_record.dart';
 import '../models/voucher.dart';
 import 'api_service.dart';
 
@@ -31,7 +33,7 @@ class SupabaseApi implements EventKuyApi {
   Future<List<Event>> fetchEvents() async {
     final rows = await _client
         .from('events')
-        .select()
+        .select('*, organizers(name, bio, city, verified, avatar_url)')
         .order('date', ascending: true);
 
     // Jumlah tiket terjual per event (view `event_stock`).
@@ -50,6 +52,12 @@ class SupabaseApi implements EventKuyApi {
     return rows.map((row) {
       final json = Map<String, dynamic>.from(row);
       json['sold'] = soldByEvent[json['id'].toString()] ?? 0;
+      // organizers dikembalikan sebagai list oleh PostgREST nested select;
+      // ambil entri pertama bila ada.
+      final orgList = json['organizers'];
+      if (orgList is List && orgList.isNotEmpty) {
+        json['organizer'] = orgList.first;
+      }
       return Event.fromJson(json);
     }).toList(growable: false);
   }
@@ -91,12 +99,18 @@ class SupabaseApi implements EventKuyApi {
     int qty = 1,
     String? voucherCode,
     String paymentMethod = 'GoPay',
+    String buyerName = '',
+    String buyerEmail = '',
+    String buyerPhone = '',
   }) async {
     final result = await _client.rpc('checkout', params: {
       'p_event_id': eventId,
       'p_qty': qty,
       'p_voucher_code': voucherCode,
       'p_payment_method': paymentMethod,
+      'p_buyer_name': buyerName.trim(),
+      'p_buyer_email': buyerEmail.trim(),
+      'p_buyer_phone': buyerPhone.trim(),
     });
 
     return CheckoutResult.fromRpc(Map<String, dynamic>.from(result as Map));
@@ -113,6 +127,24 @@ class SupabaseApi implements EventKuyApi {
       code: data['code'] as String? ?? code,
       eventTitle: data['event_title'] as String? ?? '',
     );
+  }
+
+  @override
+  Future<List<TransactionRecord>> fetchTransactions() async {
+    final rows = await _client
+        .from('transactions')
+        .select(
+          'id, total, payment_method, status, created_at, '
+          'tickets(code), events(title)',
+        )
+        .eq('user_id', _userId)
+        .order('created_at', ascending: false);
+
+    return rows
+        .map(
+          (row) => TransactionRecord.fromJson(Map<String, dynamic>.from(row)),
+        )
+        .toList(growable: false);
   }
 
   /// Pantau perubahan tiket user lewat Supabase Realtime.
@@ -178,5 +210,53 @@ class SupabaseApi implements EventKuyApi {
     return rows
         .map((row) => row['code'].toString().toUpperCase())
         .toSet();
+  }
+
+  // ── Notifikasi (P2 scaffold) ──────────────────────────────────────
+
+  @override
+  Future<List<AppNotification>> fetchNotifications() async {
+    final rows = await _client
+        .from('notifications')
+        .select()
+        .eq('user_id', _userId)
+        .order('created_at', ascending: false);
+    return rows
+        .map((row) => AppNotification.fromJson(Map<String, dynamic>.from(row)))
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> markNotificationRead(String notificationId) async {
+    await _client
+        .from('notifications')
+        .update({'read_at': DateTime.now().toIso8601String()})
+        .eq('id', notificationId)
+        .eq('user_id', _userId);
+  }
+
+  @override
+  Future<List<String>> fetchDeviceTokens() async {
+    final rows = await _client
+        .from('device_tokens')
+        .select('token')
+        .eq('user_id', _userId);
+    return rows
+        .map((row) => row['token'] as String? ?? '')
+        .where((t) => t.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> registerDeviceToken({
+    required String token,
+    String platform = 'unknown',
+  }) async {
+    await _client.from('device_tokens').upsert({
+      'user_id': _userId,
+      'token': token,
+      'platform': platform,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'user_id');
   }
 }

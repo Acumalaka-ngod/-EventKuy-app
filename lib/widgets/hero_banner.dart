@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../core/theme.dart';
 import '../models/event.dart';
 import 'event_card.dart';
@@ -90,32 +91,44 @@ class HeroBanner extends StatelessWidget {
           fit: BoxFit.cover,
         );
 
-        return GestureDetector(
+        return Semantics(
+          container: true,
+          button: true,
+          label: 'Lihat detail ${event.title}',
           onTap: onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            height: height,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusHero),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: wide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(flex: 3, child: poster),
-                      Expanded(flex: 2, child: info),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: poster),
-                      info,
-                    ],
+          child: ExcludeSemantics(
+            child: SizedBox(
+              height: height,
+              child: Material(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusHero),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onTap,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.border),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusHero),
+                    ),
+                    child: wide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(flex: 3, child: poster),
+                              Expanded(flex: 2, child: info),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(child: poster),
+                              info,
+                            ],
+                          ),
                   ),
+                ),
+              ),
+            ),
           ),
         );
       },
