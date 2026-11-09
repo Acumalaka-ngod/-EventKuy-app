@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../core/event_status.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/event.dart';
@@ -69,8 +71,9 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
 
     setState(() => _loadingStats = true);
     try {
-      final tickets =
-          await context.read<TicketProvider>().ticketsForEvent(eventId);
+      final tickets = await context.read<TicketProvider>().ticketsForEvent(
+        eventId,
+      );
       if (!mounted) return;
       setState(() {
         _eventTickets = tickets;
@@ -130,63 +133,72 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
       body: SafeArea(
         child: ConstrainedContent(
           maxWidth: 860,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            children: [
-              // Header: logo + avatar
-              Row(
-                children: [
-                  const EventKuyLogo(markSize: 24, fontSize: 14.5),
-                  const Spacer(),
-                  CircleAvatar(
-                    radius: 17,
-                    backgroundColor: AppTheme.primaryLight,
-                    child: Text(
-                      (user?.name.isNotEmpty ?? false)
-                          ? user!.name[0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.primary,
-                        fontSize: 13.5,
+          child: RefreshIndicator(
+            color: AppTheme.primary,
+            onRefresh: () async {
+              await eventProvider.loadEvents(force: true);
+              if (!mounted) return;
+              await _loadStatsForFirstEvent(force: true);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              children: [
+                // Header: logo + avatar
+                Row(
+                  children: [
+                    const EventKuyLogo(markSize: 24, fontSize: 14.5),
+                    const Spacer(),
+                    CircleAvatar(
+                      radius: 17,
+                      backgroundColor: AppTheme.primaryLight,
+                      child: Text(
+                        (user?.name.isNotEmpty ?? false)
+                            ? user!.name[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary,
+                          fontSize: 13.5,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Dashboard Event Organizer',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textDark,
-                  letterSpacing: -0.4,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              if (event != null) ...[
-                _buildEventCard(event),
-                const SizedBox(height: 16),
-                _buildStatsRow(event),
-                const SizedBox(height: 22),
+                const SizedBox(height: 18),
                 const Text(
-                  'Kelola Event',
+                  'Dashboard Event Organizer',
                   style: TextStyle(
-                    fontSize: 15.5,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.textDark,
-                    letterSpacing: -0.2,
+                    letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 10),
-                _buildManageList(context, event),
-              ] else if (!eventProvider.loading) ...[
-                _buildNoEvent(),
+                const SizedBox(height: 16),
+
+                if (event != null) ...[
+                  _buildEventCard(event),
+                  const SizedBox(height: 16),
+                  _buildStatsRow(event),
+                  const SizedBox(height: 22),
+                  const Text(
+                    'Kelola Event',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textDark,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildManageList(context, event),
+                ] else if (!eventProvider.loading) ...[
+                  _buildNoEvent(),
+                ],
+                const SizedBox(height: 24),
               ],
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),
@@ -274,26 +286,36 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 7),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentEmerald.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'Sedang Berlangsung',
-                    style: TextStyle(
-                      color: AppTheme.accentEmerald,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                _buildStatusBadge(event.date),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(DateTime date) {
+    final status = eventStatusFor(date);
+    final color = switch (status) {
+      EventStatus.upcoming => AppTheme.primary,
+      EventStatus.today => AppTheme.accentEmerald,
+      EventStatus.finished => AppTheme.textMuted,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        status.label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -303,8 +325,9 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
         .where((t) => t.status == 'paid' || t.status == 'checked_in')
         .length;
     final attendees = sold;
-    final checkedIn =
-        _eventTickets.where((t) => t.status == 'checked_in').length;
+    final checkedIn = _eventTickets
+        .where((t) => t.status == 'checked_in')
+        .length;
 
     return Row(
       children: [
@@ -372,10 +395,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 10.5,
-                color: AppTheme.textMuted,
-              ),
+              style: const TextStyle(fontSize: 10.5, color: AppTheme.textMuted),
             ),
           ],
         ),
@@ -398,12 +418,19 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
             color: AppTheme.primary,
             title: 'Detail Event',
             subtitle: 'Ubah informasi event',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EventDetailScreen(event: event),
-              ),
-            ),
+            onTap: () async {
+              final events = context.read<EventProvider>();
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EventDetailScreen(event: event),
+                ),
+              );
+              if (!mounted) return;
+              await events.loadEvents(force: true);
+              if (!mounted) return;
+              await _loadStatsForFirstEvent(force: true);
+            },
           ),
           const Divider(height: 1, indent: 66),
           _buildMenuTile(

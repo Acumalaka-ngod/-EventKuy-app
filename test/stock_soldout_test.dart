@@ -31,11 +31,7 @@ Event _event({int quota = 100, int sold = 0}) {
   );
 }
 
-Widget _wrap(
-  Widget child, {
-  EventProvider? events,
-  TicketProvider? tickets,
-}) {
+Widget _wrap(Widget child, {EventProvider? events, TicketProvider? tickets}) {
   final eventProvider = events ?? EventProvider(api: MockApiService());
   return MultiProvider(
     providers: [
@@ -44,10 +40,8 @@ Widget _wrap(
       tickets != null
           ? ChangeNotifierProvider.value(value: tickets)
           : ChangeNotifierProvider(
-              create: (_) => TicketProvider(
-                api: MockApiService(),
-                pollInterval: null,
-              ),
+              create: (_) =>
+                  TicketProvider(api: MockApiService(), pollInterval: null),
             ),
       ChangeNotifierProvider(
         create: (_) => FavoriteProvider(api: MockApiService()),
@@ -94,7 +88,9 @@ void main() {
   });
 
   group('Thumbnail — label "Tiket Habis"', () {
-    testWidgets('kartu grid menampilkan label saat tiket habis', (tester) async {
+    testWidgets('kartu grid menampilkan label saat tiket habis', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -119,7 +115,9 @@ void main() {
       expect(find.text('Tiket Habis'), findsOneWidget);
     });
 
-    testWidgets('kartu list menampilkan label saat tiket habis', (tester) async {
+    testWidgets('kartu list menampilkan label saat tiket habis', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -170,13 +168,16 @@ void main() {
   });
 
   group('Detail event — tombol beli saat tiket habis', () {
-    testWidgets('tombol dinonaktifkan dan berlabel Tiket Habis', (tester) async {
+    testWidgets('tombol dinonaktifkan dan berlabel Tiket Habis', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
+      // Provider dibiarkan kosong agar layar memakai snapshot widget yang
+      // memang sudah habis; ID event mock bisa bertabrakan dengan snapshot.
       final events = EventProvider(api: MockApiService());
-      await tester.runAsync(() => events.loadEvents());
 
       await tester.pumpWidget(
         _wrap(
@@ -200,9 +201,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(
-        _wrap(CheckoutScreen(event: _event(quota: 10))),
-      );
+      await tester.pumpWidget(_wrap(CheckoutScreen(event: _event(quota: 10))));
       await tester.pump();
 
       // 1 tiket: Rp 750.000 + biaya layanan Rp 2.500.
@@ -291,10 +290,7 @@ void main() {
       await tester.tap(find.text('Pakai'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('sudah pernah kamu pakai'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('sudah pernah kamu pakai'), findsOneWidget);
     });
   });
 }

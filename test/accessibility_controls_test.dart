@@ -9,6 +9,7 @@ import 'package:eventkuy/core/theme.dart';
 import 'package:eventkuy/models/event.dart';
 import 'package:eventkuy/models/user.dart';
 import 'package:eventkuy/providers/auth_provider.dart';
+import 'package:eventkuy/providers/event_provider.dart';
 import 'package:eventkuy/providers/favorite_provider.dart';
 import 'package:eventkuy/providers/ticket_provider.dart';
 import 'package:eventkuy/screens/checkout/checkout_screen.dart';
@@ -33,6 +34,9 @@ Widget _checkoutApp(Event event) {
     providers: [
       ChangeNotifierProvider(create: (_) => AuthProvider(initialUser: _user)),
       ChangeNotifierProvider(
+        create: (_) => EventProvider(api: MockApiService()),
+      ),
+      ChangeNotifierProvider(
         create: (_) =>
             TicketProvider(api: MockApiService(), pollInterval: null),
       ),
@@ -47,6 +51,9 @@ Widget _checkoutApp(Event event) {
 Widget _detailApp(Event event) {
   return MultiProvider(
     providers: [
+      ChangeNotifierProvider(
+        create: (_) => EventProvider(api: MockApiService()),
+      ),
       ChangeNotifierProvider(
         create: (_) => FavoriteProvider(api: MockApiService()),
       ),

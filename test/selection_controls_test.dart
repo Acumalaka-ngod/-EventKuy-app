@@ -135,6 +135,9 @@ void main() {
                 create: (_) => AuthProvider(initialUser: _user),
               ),
               ChangeNotifierProvider(
+                create: (_) => EventProvider(api: MockApiService()),
+              ),
+              ChangeNotifierProvider(
                 create: (_) =>
                     TicketProvider(api: MockApiService(), pollInterval: null),
               ),

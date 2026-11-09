@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/event.dart';
+import '../../providers/event_provider.dart';
 import '../../providers/favorite_provider.dart';
 import '../../services/share_service.dart';
 import '../../widgets/app_icon_button.dart';
@@ -25,7 +26,10 @@ class EventDetailScreen extends StatefulWidget {
 class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _share() async {
     final messenger = ScaffoldMessenger.of(context);
-    final text = ShareService.shareText(widget.event);
+    final event =
+        context.read<EventProvider>().eventById(widget.event.id) ??
+        widget.event;
+    final text = ShareService.shareText(event);
     final result = await ShareService.share(text);
     if (!mounted) return;
 
@@ -40,9 +44,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         );
       case ShareResult.failed:
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Gagal membagikan event. Coba lagi.'),
-          ),
+          const SnackBar(content: Text('Gagal membagikan event. Coba lagi.')),
         );
     }
   }
@@ -50,8 +52,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final fav = context.watch<FavoriteProvider>();
-    final isFav = fav.isFav(widget.event.id);
-    final event = widget.event;
+    final event =
+        context.watch<EventProvider>().eventById(widget.event.id) ??
+        widget.event;
+    final isFav = fav.isFav(event.id);
     final tagline = event.tags.take(2).join(' · ');
 
     return Scaffold(
@@ -65,229 +69,235 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ? (h * 0.44).clamp(340.0, 520.0).toDouble()
               : (h * 0.57).clamp(340.0, 590.0).toDouble();
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.only(bottom: compact ? 24 : 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: heroHeight,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      EventGallery(
-                        images: event.galleryImages,
-                        eventId: event.id,
-                      ),
-                      SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            compact ? 18 : 28,
-                            20,
-                            compact ? 18 : 28,
-                            0,
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _glassButton(
-                                icon: Icons.arrow_back_rounded,
-                                label: 'Kembali',
-                                onTap: () => Navigator.pop(context),
-                              ),
-                              const Spacer(),
-                              Row(
-                                children: [
-                                  _glassButton(
-                                    icon: Icons.ios_share_rounded,
-                                    label: 'Bagikan event',
-                                    onTap: _share,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _glassButton(
-                                    icon: Icons.favorite_border_rounded,
-                                    selectedIcon: Icons.favorite_rounded,
-                                    label: 'Simpan ke favorit',
-                                    selectedLabel: 'Hapus dari favorit',
-                                    onTap: () => fav.toggle(event.id),
-                                    active: isFav,
-                                  ),
-                                ],
-                              ),
-                            ],
+          return RefreshIndicator(
+            color: AppTheme.violet,
+            onRefresh: () =>
+                context.read<EventProvider>().loadEvents(force: true),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.only(bottom: compact ? 24 : 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: heroHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        EventGallery(
+                          images: event.galleryImages,
+                          eventId: event.id,
+                        ),
+                        SafeArea(
+                          bottom: false,
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              compact ? 18 : 28,
+                              20,
+                              compact ? 18 : 28,
+                              0,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _glassButton(
+                                  icon: Icons.arrow_back_rounded,
+                                  label: 'Kembali',
+                                  onTap: () => Navigator.pop(context),
+                                ),
+                                const Spacer(),
+                                Row(
+                                  children: [
+                                    _glassButton(
+                                      icon: Icons.ios_share_rounded,
+                                      label: 'Bagikan event',
+                                      onTap: _share,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    _glassButton(
+                                      icon: Icons.favorite_border_rounded,
+                                      selectedIcon: Icons.favorite_rounded,
+                                      label: 'Simpan ke favorit',
+                                      selectedLabel: 'Hapus dari favorit',
+                                      onTap: () => fav.toggle(event.id),
+                                      active: isFav,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 860),
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        compact ? 18 : 28,
-                        compact ? 25 : 34,
-                        compact ? 18 : 28,
-                        40,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 11,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.violetSoft,
-                                  borderRadius: BorderRadius.circular(9),
-                                ),
-                                child: Text(
-                                  event.category.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: AppTheme.violet,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.8,
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 860),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          compact ? 18 : 28,
+                          compact ? 25 : 34,
+                          compact ? 18 : 28,
+                          40,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 11,
+                                    vertical: 7,
                                   ),
-                                ),
-                              ),
-                              const Spacer(),
-                              if (event.ratingCount > 0) ...[
-                                const Icon(
-                                  Icons.star_rounded,
-                                  color: AppTheme.amber,
-                                  size: 17,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  event.rating.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    color: AppTheme.amber,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.violetSoft,
+                                    borderRadius: BorderRadius.circular(9),
                                   ),
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
                                   child: Text(
-                                    '(${event.ratingCount} ulasan)',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    event.category.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: AppTheme.violet,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (event.ratingCount > 0) ...[
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    color: AppTheme.amber,
+                                    size: 17,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    event.rating.toStringAsFixed(1),
+                                    style: TextStyle(
+                                      color: AppTheme.amber,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      '(${event.ratingCount} ulasan)',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: AppTheme.muted,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const Text(
+                                    'Belum ada ulasan',
                                     style: TextStyle(
                                       color: AppTheme.muted,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                ),
-                              ] else ...[
-                                const Text(
-                                  'Belum ada ulasan',
-                                  style: TextStyle(
-                                    color: AppTheme.muted,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                                ],
                               ],
-                            ],
-                          ),
-                          const SizedBox(height: 18),
-                          Text(
-                            event.title,
-                            style: TextStyle(
-                              fontFamily: AppTheme.headingFont,
-                              fontSize: compact ? 35 : 52,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: compact ? -1.5 : -2.6,
-                              height: 1.08,
-                              color: AppTheme.ink,
                             ),
-                          ),
-                          if (tagline.isNotEmpty) ...[
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 18),
                             Text(
-                              tagline,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.muted,
-                                height: 1.5,
+                              event.title,
+                              style: TextStyle(
+                                fontFamily: AppTheme.headingFont,
+                                fontSize: compact ? 35 : 52,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: compact ? -1.5 : -2.6,
+                                height: 1.08,
+                                color: AppTheme.ink,
                               ),
                             ),
-                          ],
-                          const SizedBox(height: 26),
-                          _infoCard(
-                            icon: Icons.calendar_month_rounded,
-                            label: 'TANGGAL & WAKTU',
-                            title: formatTanggal(event.date),
-                            subtitle: '${event.timeRange} WIB',
-                          ),
-                          const SizedBox(height: 12),
-                          _infoCard(
-                            icon: Icons.location_on_rounded,
-                            label: 'LOKASI',
-                            title: venueOf(event.location),
-                            subtitle: event.location,
-                          ),
-                          const SizedBox(height: 26),
-                          _buildOrganizer(context),
-                          const SizedBox(height: 30),
-                          const Text(
-                            'Tentang Acara',
-                            style: TextStyle(
-                              fontFamily: AppTheme.headingFont,
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.ink,
+                            if (tagline.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Text(
+                                tagline,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.muted,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 26),
+                            _infoCard(
+                              icon: Icons.calendar_month_rounded,
+                              label: 'TANGGAL & WAKTU',
+                              title: formatTanggal(event.date),
+                              subtitle: '${event.timeRange} WIB',
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            event.description,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              color: AppTheme.muted,
-                              height: 1.7,
+                            const SizedBox(height: 12),
+                            _infoCard(
+                              icon: Icons.location_on_rounded,
+                              label: 'LOKASI',
+                              title: venueOf(event.location),
+                              subtitle: event.location,
                             ),
-                          ),
-                          if (event.tags.isNotEmpty) ...[
-                            const SizedBox(height: 22),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: event.tags.map((t) {
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF0F0F5),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    t,
-                                    style: const TextStyle(
-                                      color: AppTheme.muted,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                            const SizedBox(height: 26),
+                            _buildOrganizer(context, event),
+                            const SizedBox(height: 30),
+                            const Text(
+                              'Tentang Acara',
+                              style: TextStyle(
+                                fontFamily: AppTheme.headingFont,
+                                fontSize: 21,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              event.description,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                color: AppTheme.muted,
+                                height: 1.7,
+                              ),
+                            ),
+                            if (event.tags.isNotEmpty) ...[
+                              const SizedBox(height: 22),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: event.tags.map((t) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
                                     ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF0F0F5),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      t,
+                                      style: const TextStyle(
+                                        color: AppTheme.muted,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -339,7 +349,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               ? 'Tiket habis'
                               : 'Sisa ${event.available} tiket',
                           style: TextStyle(
-                            color: event.isSoldOut ? AppTheme.red : AppTheme.muted,
+                            color: event.isSoldOut
+                                ? AppTheme.red
+                                : AppTheme.muted,
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -350,16 +362,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   const SizedBox(width: 24),
                   Expanded(
                     child: CustomButton(
-                      label: event.isSoldOut ? 'Tiket Habis' : 'Daftar & Beli Tiket',
+                      label: event.isSoldOut
+                          ? 'Tiket Habis'
+                          : 'Daftar & Beli Tiket',
                       height: 56,
                       onPressed: event.isSoldOut
                           ? null
                           : () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => CheckoutScreen(event: event),
-                                ),
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CheckoutScreen(event: event),
                               ),
+                            ),
                     ),
                   ),
                 ],
@@ -460,10 +474,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  Widget _buildOrganizer(BuildContext context) {
-    final org = widget.event.organizer;
-    final displayOrg =
-        org != null && org.displayName.isNotEmpty ? org : null;
+  Widget _buildOrganizer(BuildContext context, Event event) {
+    final org = event.organizer;
+    final displayOrg = org != null && org.displayName.isNotEmpty ? org : null;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(

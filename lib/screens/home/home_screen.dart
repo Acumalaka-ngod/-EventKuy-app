@@ -33,19 +33,11 @@ class _HomeScreenState extends State<HomeScreen> {
     'Olahraga',
   ];
 
-  static const _cities = [
-    'Semua Kota',
-    'Jakarta',
-    'Bandung',
-    'Surabaya',
-    'Yogyakarta',
-  ];
-
   final _heroController = PageController(viewportFraction: 1);
   final _searchController = TextEditingController();
   EventProvider? _eventProvider;
   int _heroIndex = 0;
-  String _city = 'Jakarta';
+  String _city = 'Semua Kota';
 
   @override
   void initState() {
@@ -91,7 +83,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Opsi kota diambil dari lokasi event yang benar-benar ada di backend,
+  /// bukan daftar statis. "Semua Kota" selalu jadi pilihan pertama.
+  List<String> _cityOptions(EventProvider provider) {
+    final cities = <String>{};
+    for (final event in provider.events) {
+      final city = cityOf(event.location).trim();
+      if (city.isNotEmpty) cities.add(city);
+    }
+    final sorted = cities.toList()..sort();
+    return ['Semua Kota', ...sorted];
+  }
+
   void _showCityPicker() {
+    final cities = _cityOptions(context.read<EventProvider>());
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -134,14 +139,17 @@ class _HomeScreenState extends State<HomeScreen> {
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
-                itemCount: _cities.length,
+                itemCount: cities.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (context, i) {
-                  final c = _cities[i];
+                  final c = cities[i];
                   final isSelected = _city == c;
                   return InkWell(
                     onTap: () {
-                      setState(() => _city = c);
+                      setState(() {
+                        _city = c;
+                        _heroIndex = 0;
+                      });
                       Navigator.pop(ctx);
                     },
                     borderRadius: BorderRadius.circular(16),
@@ -308,10 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       n.body,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.muted,
-                      ),
+                      style: TextStyle(fontSize: 12, color: AppTheme.muted),
                     ),
                     trailing: n.isRead
                         ? const Icon(
@@ -343,10 +348,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Event> _visibleEvents(EventProvider provider) {
     final list = provider.events;
     if (_city == 'Semua Kota') return list;
+    final selected = _city.trim().toLowerCase();
     return list
-        .where(
-          (e) => cityOf(e.location).toLowerCase().contains(_city.toLowerCase()),
-        )
+        .where((e) => cityOf(e.location).trim().toLowerCase() == selected)
         .toList();
   }
 
@@ -475,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.canvas,
       body: SafeArea(
-        child: provider.loading
+        child: provider.loading && provider.events.isEmpty
             ? const Center(
                 child: CircularProgressIndicator(color: AppTheme.violet),
               )
@@ -493,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   return RefreshIndicator(
                     color: AppTheme.violet,
-                    onRefresh: () async => await provider.loadEvents(),
+                    onRefresh: () => provider.loadEvents(force: true),
                     child: ConstrainedContent(
                       child: ListView(
                         padding: EdgeInsets.symmetric(

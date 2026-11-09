@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +9,7 @@ import '../../core/theme.dart';
 import '../../models/checkout_result.dart';
 import '../../models/event.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/event_provider.dart';
 import '../../providers/ticket_provider.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/app_logo.dart';
@@ -51,10 +54,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
   static final _phonePattern = RegExp(r'^\+?[0-9]{9,15}$');
 
-  /// Sisa tiket; `null` berarti kuota tidak dibatasi.
-  int? get _maxQty => widget.event.available;
-
-  bool get _soldOut => widget.event.isSoldOut;
+  /// Event terbaru dari [EventProvider]; fallback ke snapshot widget bila
+  /// provider belum memuat event tersebut (mis. widget test terisolasi).
+  Event _currentEvent({bool listen = false}) {
+    final provider = listen
+        ? context.watch<EventProvider>()
+        : context.read<EventProvider>();
+    return provider.eventById(widget.event.id) ?? widget.event;
+  }
 
   @override
   void initState() {
@@ -62,6 +69,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final user = context.read<AuthProvider>().user;
     _name = TextEditingController(text: user?.name ?? '');
     _email = TextEditingController(text: user?.email ?? '');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Kalau stok menurun saat layar checkout terbuka, jangan biarkan jumlah
+    // tiket yang dipilih melebihi sisa stok terbaru.
+    final max = _currentEvent().available;
+    if (max != null) {
+      final safeMax = max < 1 ? 1 : max;
+      if (_qty > safeMax) _qty = safeMax;
+    }
   }
 
   @override
@@ -98,8 +117,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return null;
   }
 
-  void _changeQty(int delta) {
-    final max = _maxQty;
+  void _changeQty(int delta, Event event) {
+    final max = event.available;
     final next = _qty + delta;
     if (next < 1) return;
     if (max != null && next > max) return;
@@ -177,7 +196,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
-    if (_soldOut) {
+    final event = _currentEvent();
+    if (event.isSoldOut) {
       setState(() => _checkoutError = 'Tiket event ini sudah habis.');
       return;
     }
@@ -189,7 +209,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final result = await context.read<TicketProvider>().checkout(
-        widget.event,
+        event,
         qty: _qty,
         voucherCode: _voucherValid ? _appliedVoucher : null,
         paymentMethod: _method,
@@ -199,10 +219,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
 
       if (!mounted) return;
+
+      // Stok langsung berkurang di UI, lalu direkonsiliasi dengan backend
+      // tanpa menahan dialog sukses.
+      final events = context.read<EventProvider>();
+      events.applySoldDelta(event.id, result.qty);
+      unawaited(events.loadEvents(force: true));
+
       setState(() => _isProcessing = false);
-      _showSuccess(result);
+      _showSuccess(result, event);
     } catch (error) {
       if (!mounted) return;
+
+      // Bisa jadi stok berubah karena pembeli lain; tarik data terbaru.
+      unawaited(context.read<EventProvider>().loadEvents(force: true));
+
       setState(() {
         _isProcessing = false;
         _checkoutError = friendlyError(error);
@@ -210,7 +241,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showSuccess(CheckoutResult result) {
+  void _showSuccess(CheckoutResult result, Event event) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -271,8 +302,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const SizedBox(height: 8),
               Text(
                 result.qty > 1
-                    ? '${result.qty} e-tiket untuk ${widget.event.title} sudah diterbitkan dan dikirim ke email kamu.'
-                    : 'E-tiket untuk ${widget.event.title} sudah diterbitkan dan dikirim ke email kamu.',
+                    ? '${result.qty} e-tiket untuk ${event.title} sudah diterbitkan. Buka menu Tiket Saya untuk melihatnya.'
+                    : 'E-tiket untuk ${event.title} sudah diterbitkan. Buka menu Tiket Saya untuk melihatnya.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
@@ -359,16 +390,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final subtotal = widget.event.price * _qty;
+    final event = _currentEvent(listen: true);
+    final subtotal = event.price * _qty;
     final adminFee = _adminFee * _qty;
     final total = (subtotal + adminFee - _discount)
         .clamp(0, double.infinity)
         .toInt();
 
     final leftColumn = <Widget>[
-      _buildSummaryCard(),
+      _buildSummaryCard(event),
       const SizedBox(height: 18),
-      _buildQtyCard(),
+      _buildQtyCard(event),
       const SizedBox(height: 18),
       _buildBuyerCard(),
       const SizedBox(height: 18),
@@ -382,7 +414,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final w = constraints.maxWidth;
         final twoColumns = w >= 1024;
         final rightColumn = <Widget>[
-          _buildTotalCard(subtotal, adminFee, total, showCta: twoColumns),
+          _buildTotalCard(
+            subtotal,
+            adminFee,
+            total,
+            event: event,
+            showCta: twoColumns,
+          ),
         ];
 
         return Scaffold(
@@ -468,13 +506,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
           ),
-          bottomNavigationBar: twoColumns ? null : _buildStickyBar(total),
+          bottomNavigationBar: twoColumns
+              ? null
+              : _buildStickyBar(total, event),
         );
       },
     );
   }
 
-  Widget _buildStickyBar(int total) {
+  Widget _buildStickyBar(int total, Event event) {
     return Container(
       key: const ValueKey('checkout-sticky-bar'),
       decoration: const BoxDecoration(
@@ -492,11 +532,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const SizedBox(height: 8),
             ],
             CustomButton(
-              label: _soldOut
+              label: event.isSoldOut
                   ? 'Tiket Habis'
                   : 'Bayar Sekarang · ${formatRp(total)}',
               loading: _isProcessing,
-              onPressed: _soldOut ? null : _processPayment,
+              onPressed: event.isSoldOut ? null : _processPayment,
             ),
           ],
         ),
@@ -607,7 +647,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(Event event) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -618,8 +658,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Row(
         children: [
           EventImage(
-            imageUrl: widget.event.imageUrl,
-            eventId: widget.event.id,
+            imageUrl: event.imageUrl,
+            eventId: event.id,
             height: 86,
             width: 116,
             borderRadius: BorderRadius.circular(13),
@@ -630,7 +670,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.event.category.toUpperCase(),
+                  event.category.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -642,7 +682,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  widget.event.title,
+                  event.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -656,7 +696,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '${formatTanggalSingkat(widget.event.date)} · $_qty× Regular Pass',
+                  '${formatTanggalSingkat(event.date)} · $_qty× Regular Pass',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppTheme.muted, fontSize: 11),
@@ -670,9 +710,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   /// Pemilih jumlah tiket + info sisa stok.
-  Widget _buildQtyCard() {
-    final max = _maxQty;
-    final soldOut = _soldOut;
+  Widget _buildQtyCard(Event event) {
+    final max = event.available;
+    final soldOut = event.isSoldOut;
     final canAdd = !soldOut && (max == null || _qty < max);
 
     return _card(
@@ -710,7 +750,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _qtyButton(
             icon: Icons.remove_rounded,
             label: 'Kurangi jumlah tiket',
-            onTap: soldOut || _qty <= 1 ? null : () => _changeQty(-1),
+            onTap: soldOut || _qty <= 1 ? null : () => _changeQty(-1, event),
           ),
           SizedBox(
             width: 44,
@@ -728,7 +768,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _qtyButton(
             icon: Icons.add_rounded,
             label: 'Tambah jumlah tiket',
-            onTap: canAdd ? () => _changeQty(1) : null,
+            onTap: canAdd ? () => _changeQty(1, event) : null,
           ),
         ],
       ),
@@ -976,6 +1016,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     int subtotal,
     int adminFee,
     int total, {
+    required Event event,
     required bool showCta,
   }) {
     return Container(
@@ -1072,16 +1113,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           if (showCta) ...[
             const SizedBox(height: 14),
             CustomButton(
-              label: _soldOut
+              label: event.isSoldOut
                   ? 'Tiket Habis'
                   : 'Bayar Sekarang · ${formatRp(total)}',
               loading: _isProcessing,
-              onPressed: _soldOut ? null : _processPayment,
+              onPressed: event.isSoldOut ? null : _processPayment,
             ),
           ],
           const SizedBox(height: 12),
           const Text(
-            'Dengan melanjutkan, kamu menyetujui ketentuan pembayaran EventKuy. E-tiket dikirim ke email konfirmasi.',
+            'Dengan melanjutkan, kamu menyetujui ketentuan pembayaran EventKuy. E-tiket tersedia di menu Tiket Saya.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppTheme.muted, fontSize: 9, height: 1.5),
           ),

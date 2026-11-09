@@ -7,6 +7,7 @@ import 'package:eventkuy/models/checkout_result.dart';
 import 'package:eventkuy/models/event.dart';
 import 'package:eventkuy/models/transaction_record.dart';
 import 'package:eventkuy/providers/auth_provider.dart';
+import 'package:eventkuy/providers/event_provider.dart';
 import 'package:eventkuy/providers/ticket_provider.dart';
 import 'package:eventkuy/screens/checkout/checkout_screen.dart';
 import 'package:eventkuy/services/mock_api_service.dart';
@@ -27,6 +28,9 @@ Widget _app(Event event, {AuthProvider? auth, TicketProvider? tickets}) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => auth ?? AuthProvider()),
+      ChangeNotifierProvider(
+        create: (_) => EventProvider(api: MockApiService()),
+      ),
       ChangeNotifierProvider(
         create: (_) =>
             tickets ??
@@ -81,9 +85,7 @@ class _CapturingTicketProvider extends TicketProvider {
 
 void main() {
   group('Persistensi data pembeli', () {
-    testWidgets('UI mengirim nilai form ke provider checkout', (
-      tester,
-    ) async {
+    testWidgets('UI mengirim nilai form ke provider checkout', (tester) async {
       tester.view.physicalSize = const Size(390, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);

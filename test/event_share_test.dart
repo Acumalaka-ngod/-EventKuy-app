@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:eventkuy/core/theme.dart';
 import 'package:eventkuy/models/event.dart';
+import 'package:eventkuy/providers/event_provider.dart';
 import 'package:eventkuy/providers/favorite_provider.dart';
 import 'package:eventkuy/screens/event/event_detail_screen.dart';
 import 'package:eventkuy/services/mock_api_service.dart';
@@ -23,8 +24,15 @@ Event _event() => Event(
 );
 
 Widget _app(Event event) {
-  return ChangeNotifierProvider(
-    create: (_) => FavoriteProvider(api: MockApiService()),
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(
+        create: (_) => EventProvider(api: MockApiService()),
+      ),
+      ChangeNotifierProvider(
+        create: (_) => FavoriteProvider(api: MockApiService()),
+      ),
+    ],
     child: MaterialApp(
       theme: AppTheme.light(),
       home: EventDetailScreen(event: event),
@@ -34,18 +42,21 @@ Widget _app(Event event) {
 
 void main() {
   group('ShareService.shareText', () {
-    test('hasil berisi judul, tanggal, lokasi, harga, dan tautan deep link', () {
-      final event = _event();
-      final text = ShareService.shareText(event);
+    test(
+      'hasil berisi judul, tanggal, lokasi, harga, dan tautan deep link',
+      () {
+        final event = _event();
+        final text = ShareService.shareText(event);
 
-      expect(text, contains(event.title));
-      expect(text, contains('8 November 2026'));
-      expect(text, contains('19:00 - 22:00 WIB'));
-      expect(text, contains(event.location));
-      expect(text, contains('Rp 150.000'));
-      expect(text, contains('eventkuy://event/evt-1'));
-      expect(text, contains('EventKuy'));
-    });
+        expect(text, contains(event.title));
+        expect(text, contains('8 November 2026'));
+        expect(text, contains('19:00 - 22:00 WIB'));
+        expect(text, contains(event.location));
+        expect(text, contains('Rp 150.000'));
+        expect(text, contains('eventkuy://event/evt-1'));
+        expect(text, contains('EventKuy'));
+      },
+    );
   });
 
   group('ShareService.share', () {

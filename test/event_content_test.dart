@@ -5,17 +5,18 @@ import 'package:provider/provider.dart';
 import 'package:eventkuy/core/theme.dart';
 import 'package:eventkuy/models/event.dart';
 import 'package:eventkuy/models/organizer.dart';
+import 'package:eventkuy/providers/event_provider.dart';
 import 'package:eventkuy/providers/favorite_provider.dart';
 import 'package:eventkuy/screens/event/event_detail_screen.dart';
 import 'package:eventkuy/services/mock_api_service.dart';
 
 Organizer _organizer() => const Organizer(
-      id: 'org-1',
-      name: 'Penyelenggara Demo',
-      bio: 'Ini adalah bio penyelenggara demo.',
-      city: 'Jakarta',
-      verified: true,
-    );
+  id: 'org-1',
+  name: 'Penyelenggara Demo',
+  bio: 'Ini adalah bio penyelenggara demo.',
+  city: 'Jakarta',
+  verified: true,
+);
 
 Event _event({Organizer? organizer, double rating = 0, int ratingCount = 0}) =>
     Event(
@@ -36,8 +37,15 @@ Event _event({Organizer? organizer, double rating = 0, int ratingCount = 0}) =>
     );
 
 Widget _app(Event event) {
-  return ChangeNotifierProvider(
-    create: (_) => FavoriteProvider(api: MockApiService()),
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(
+        create: (_) => EventProvider(api: MockApiService()),
+      ),
+      ChangeNotifierProvider(
+        create: (_) => FavoriteProvider(api: MockApiService()),
+      ),
+    ],
     child: MaterialApp(
       theme: AppTheme.light(),
       home: EventDetailScreen(event: event),
@@ -77,7 +85,11 @@ void main() {
 
   group('Event model', () {
     test('copyWith mempertahankan organizer dan rating', () {
-      final event = _event(organizer: _organizer(), rating: 4.5, ratingCount: 10);
+      final event = _event(
+        organizer: _organizer(),
+        rating: 4.5,
+        ratingCount: 10,
+      );
       final updated = event.copyWith(sold: 5);
       expect(updated.sold, 5);
       expect(updated.organizer?.name, 'Penyelenggara Demo');

@@ -24,8 +24,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _sort = 'Semua';
   String? _city;
 
-  static const _cities = ['Jakarta', 'Bandung', 'Surabaya', 'Yogyakarta'];
-
   @override
   void initState() {
     super.initState();
@@ -70,7 +68,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  /// Kota diambil dari event nyata di backend.
+  List<String> _cityOptions(EventProvider provider) {
+    final cities = <String>{};
+    for (final event in provider.events) {
+      final city = cityOf(event.location).trim();
+      if (city.isNotEmpty) cities.add(city);
+    }
+    final sorted = cities.toList()..sort();
+    return sorted;
+  }
+
   void _showCityPicker() {
+    final cities = _cityOptions(context.read<EventProvider>());
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -106,7 +116,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             const SizedBox(height: 20),
             _cityTile(ctx, 'Semua Kota', null),
-            for (final c in _cities) _cityTile(ctx, c, c),
+            for (final c in cities) _cityTile(ctx, c, c),
           ],
         ),
       ),
@@ -173,8 +183,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     var events = provider.events;
     if (_city != null) {
+      final selected = _city!.trim().toLowerCase();
       events = events
-          .where((e) => cityOf(e.location).contains(_city!))
+          .where((e) => cityOf(e.location).trim().toLowerCase() == selected)
           .toList();
     }
     events = [...events];
@@ -265,7 +276,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   const SizedBox(height: 20),
                   Expanded(
-                    child: provider.loading
+                    child: provider.loading && provider.events.isEmpty
                         ? const Center(
                             child: CircularProgressIndicator(
                               strokeWidth: 3,

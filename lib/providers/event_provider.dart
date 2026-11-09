@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/errors.dart';
@@ -12,6 +14,7 @@ class EventProvider extends ChangeNotifier {
 
   List<Event> _events = [];
   bool _loading = false;
+  bool _refreshQueued = false;
   String? _error;
   String _query = '';
   String _category = 'Semua';
@@ -50,8 +53,24 @@ class EventProvider extends ChangeNotifier {
   String get query => _query;
   String get category => _category;
 
+  /// Cari event berdasarkan ID dari daftar yang sedang dimuat.
+  /// Dipakai layar detail/checkout supaya selalu memakai data stok terbaru,
+  /// bukan snapshot lama yang dipegang widget.
+  Event? eventById(String id) {
+    for (final event in _events) {
+      if (event.id == id) return event;
+    }
+    return null;
+  }
+
   Future<void> loadEvents({bool force = false}) async {
-    if (_loading || (!force && _events.isNotEmpty)) return;
+    if (_loading) {
+      // Jangan buang permintaan force-refresh (mis. setelah checkout) hanya
+      // karena ada fetch lain yang sedang berjalan.
+      if (force) _refreshQueued = true;
+      return;
+    }
+    if (!force && _events.isNotEmpty) return;
     _loading = true;
     _error = null;
     notifyListeners();
@@ -62,7 +81,33 @@ class EventProvider extends ChangeNotifier {
     } finally {
       _loading = false;
       notifyListeners();
+      if (_refreshQueued) {
+        _refreshQueued = false;
+        unawaited(loadEvents(force: true));
+      }
     }
+  }
+
+  /// Kurangi sisa stok secara optimistis tepat setelah checkout berhasil.
+  /// Backend tetap menjadi sumber kebenaran; pemanggil sebaiknya lanjut
+  /// memanggil [loadEvents] dengan `force: true` untuk rekonsiliasi.
+  void applySoldDelta(String eventId, int delta) {
+    if (delta == 0) return;
+
+    final index = _events.indexWhere((event) => event.id == eventId);
+    if (index == -1) return;
+
+    final event = _events[index];
+    final next = event.sold + delta;
+    final sold = event.quota > 0
+        ? next.clamp(0, event.quota)
+        : (next < 0 ? 0 : next);
+    if (sold == event.sold) return;
+
+    final updated = [..._events];
+    updated[index] = event.copyWith(sold: sold);
+    _events = updated;
+    notifyListeners();
   }
 
   void setQuery(String q) {

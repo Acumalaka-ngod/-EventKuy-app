@@ -371,7 +371,7 @@ void main() {
         await tester.pump();
 
         // Topbar beranda selalu terlihat di semua breakpoint
-        expect(find.text('Jakarta, ID'), findsOneWidget);
+        expect(find.text('Semua Kota'), findsOneWidget);
         if (size.width < 720) {
           expect(find.text('Beranda'), findsOneWidget);
         }
