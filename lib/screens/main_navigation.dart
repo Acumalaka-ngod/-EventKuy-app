@@ -73,9 +73,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
       provider.takePending();
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => EventDetailScreen(event: event),
-        ),
+        MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)),
       );
     } catch (_) {
       // DeepLinkProvider atau EventProvider tidak tersedia.
@@ -119,6 +117,11 @@ class _MainNavigationState extends State<MainNavigation> {
   ];
 
   void _onTap(int i) {
+    // Saat masuk kembali ke tab Favorit, saring ulang daftarnya supaya
+    // event yang sempat dilepas (salah pencet lalu dibiarkan) tidak menumpuk.
+    if (i == 3 && _index != 3) {
+      context.read<FavoriteProvider>().syncShelf();
+    }
     setState(() => _index = i);
   }
 
@@ -211,8 +214,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 style: TextStyle(
                   fontSize: 10,
                   height: 1.1,
-                  fontWeight:
-                      isSelected ? FontWeight.w800 : FontWeight.w600,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   color: isSelected ? AppTheme.ink : AppTheme.muted,
                 ),
               ),
@@ -259,7 +261,9 @@ class _MainNavigationState extends State<MainNavigation> {
                           color: Colors.transparent,
                           child: InkWell(
                             onTap: () => _onTap(i),
-                            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusLg,
+                            ),
                             child: SizedBox(
                               width: 72,
                               height: 64,
@@ -481,4 +485,3 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
-
