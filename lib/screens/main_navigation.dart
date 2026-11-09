@@ -18,8 +18,8 @@ import 'profile/profile_screen.dart';
 import 'ticket/my_tickets_screen.dart';
 
 /// Navigasi utama 5 tab yang adaptif:
-/// - Mobile (<720)       : floating bottom bar
-/// - Tablet (720-1100)   : rail ikon 88px
+/// - Mobile (<720)       : bottom bar full-width
+/// - Tablet (720-1100)   : rail ikon 96px
 /// - Desktop (>1100)     : sidebar 240px
 class MainNavigation extends StatefulWidget {
   final int initialIndex;
@@ -147,21 +147,20 @@ class _MainNavigationState extends State<MainNavigation> {
     return Scaffold(
       backgroundColor: AppTheme.canvas,
       // Scaffold sudah menyisihkan tinggi bottomNavigationBar, jadi body tidak
-      // perlu padding bawah tambahan (dulu 84px -> muncul pita kosong di atas
-      // navbar yang menutupi konten).
+      // perlu padding bawah tambahan.
       body: _body(),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-          child: Container(
-            height: 72,
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              border: Border.all(color: AppTheme.border),
-            ),
+      // Bar menempel penuh ke tepi kiri/kanan layar. Border hanya di sisi atas
+      // agar tidak terlihat terpotong, dan SafeArea menjaga gesture bar HP.
+      bottomNavigationBar: Container(
+        key: const ValueKey('mobile-nav-bar'),
+        decoration: const BoxDecoration(
+          color: AppTheme.surface,
+          border: Border(top: BorderSide(color: AppTheme.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 78,
             child: Row(
               children: [
                 for (var i = 0; i < _items.length; i++)
@@ -183,32 +182,43 @@ class _MainNavigationState extends State<MainNavigation> {
     final item = _items[index];
     final isSelected = _index == index;
 
-    return InkWell(
-      // Semua layout harus lewat `_onTap` supaya perilaku tab sama di HP,
-      // tablet, dan desktop.
+    return Semantics(
+      key: ValueKey('mobile-nav-item-$index'),
+      container: true,
+      button: true,
+      selected: isSelected,
+      label: item.label,
       onTap: () => _onTap(index),
-      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildBadgeIcon(
-            icon: isSelected ? item.activeIcon : item.icon,
-            count: badgeCount,
-            color: isSelected ? AppTheme.ink : AppTheme.muted,
-            size: 19,
+      child: ExcludeSemantics(
+        child: InkWell(
+          // Semua layout harus lewat `_onTap` supaya perilaku tab sama di HP,
+          // tablet, dan desktop.
+          onTap: () => _onTap(index),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildBadgeIcon(
+                icon: isSelected ? item.activeIcon : item.icon,
+                count: badgeCount,
+                color: isSelected ? AppTheme.ink : AppTheme.muted,
+                size: 22,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  height: 1.1,
+                  fontWeight:
+                      isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected ? AppTheme.ink : AppTheme.muted,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 3),
-          Text(
-            item.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected ? AppTheme.ink : AppTheme.muted,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
