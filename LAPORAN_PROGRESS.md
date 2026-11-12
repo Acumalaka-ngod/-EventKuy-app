@@ -80,13 +80,13 @@ Rencana Pengembangan Berikutnya
 
 EventKuy adalah aplikasi mobile untuk menemukan event (konser, seminar, workshop, dan olahraga), menyimpan event favorit, membeli tiket, serta menampilkan e-ticket ber-QR. Frontend Flutter sudah terhubung ke backend Supabase untuk autentikasi, event, favorit, checkout, tiket, PDF, dashboard organizer, dan check-in.
 
-Capaian utama per 8 November 2026:
+Capaian utama per 12 November 2026:
 
 1. Seluruh tampilan utama telah diimplementasikan dan responsif pada mobile, tablet, dan desktop.
 2. Autentikasi memakai Supabase Auth (email/password); sesi dikelola `supabase_flutter` dan profil dibaca dari tabel `profiles`.
 3. Alur tiket berjalan: event dari Supabase, checkout dengan voucher lewat RPC `checkout`, tiket ber-QR, unduh PDF, serta check-in organizer lewat RPC `check_in_ticket`.
-4. Dashboard organizer menampilkan statistik nyata dari Supabase dan hanya event milik organizer yang login.
-5. `flutter analyze` menghasilkan **No issues found**, `flutter test` lulus **259 dari 259 pengujian**, dan `flutter build web --release` sukses.
+4. Dashboard organizer menjadi beranda akun organizer, menampilkan statistik nyata dari Supabase dan hanya event milik organizer yang login. Navbar organizer berisi Beranda, aksi Scan QR besar di tengah, dan Profil; tab pembeli tidak ditampilkan.
+5. `flutter analyze` menghasilkan **No issues found**, `flutter test` lulus **266 dari 266 pengujian**, dan `flutter build web --release` sukses.
 6. Verifikasi UI web dengan headless Chrome mencakup login attendee/organizer, tiket, PDF, tiket tetap ada setelah login ulang, check-in manual, dan bottom bar detail event pada 390x844, 768x1024, serta 1400x900.
 7. Audit UI/UX awal memberi skor **6.1/10**. Remediasi P1 (form auth, state error/retry, favorit, navigasi, checkout, aksesibilitas) selesai dan diuji. P2 (lokalisasi, reduced motion, token desain, organizer/rating nyata, buyer data, deep link, native share, notifikasi scaffold) selesai kecuali dark mode dan push live. Penilaian mandiri setelah P1+P2 adalah **8.4/10** (belum audit independen).
 8. Yang belum selesai: pemindaian kamera di Chrome/Android, share sheet PDF di perangkat, build APK, pembayaran Midtrans, dark mode, dan pengiriman push notification live (menunggu kredensial Firebase).
@@ -96,12 +96,12 @@ Capaian utama per 8 November 2026:
 | Perencanaan dan desain | Selesai (dokumen) | DESIGN_SPEC.md, laporan ini |
 | Lingkungan pengembangan | Selesai | `flutter doctor`, `flutter analyze`, `flutter test` |
 | Database dan backend | Selesai (Supabase) | `supabase/schema.sql`, `seed.sql`, `tool/verify-supabase.ps1` |
-| Autentikasi | Selesai (Supabase Auth) | Login/logout attendee dan organizer terverifikasi; validasi form otomatis |
+| Autentikasi | Selesai (Supabase Auth) | Login/logout attendee dan organizer terverifikasi; routing pembeli/organizer; validasi form otomatis |
 | Integrasi REST API | Selesai (Supabase) | `SupabaseApi`, RPC checkout/check-in |
-| UI mobile | Selesai | 259 widget/unit test pada 390–1400 px, verifikasi headless Chrome |
-| QR, e-ticket, check-in | Berjalan | QR asli, PDF, check-in server; kamera pending |
-| Dashboard organizer | Selesai (Supabase) | Statistik nyata, filter `organizerId` |
-| Pengujian | Berjalan | 259 widget/unit test + 3 script verifikasi backend |
+| UI mobile | Selesai | 266 widget/unit test pada 390–1400 px, verifikasi headless Chrome |
+| QR, e-ticket, check-in | Berjalan | QR asli, PDF, check-in server, Scan QR di navbar organizer; kamera pending |
+| Dashboard organizer | Selesai (Supabase) | Statistik nyata, filter `organizerId`, dashboard sebagai beranda |
+| Pengujian | Berjalan | 266 widget/unit test + 3 script verifikasi backend |
 | Rilis | Berjalan | Build web sukses; APK dan perangkat pending |
 
 ---
@@ -114,6 +114,8 @@ Bagian ini mendefinisikan masalah, ruang lingkup, kebutuhan, dan rancangan aplik
 
 EventKuy adalah aplikasi mobile berbasis Flutter untuk menemukan event, menyimpan event favorit, membeli tiket, dan menampilkan e-ticket ber-QR. Aplikasi menargetkan pengguna urban berusia 18–35 tahun yang aktif mencari hiburan dan pengembangan diri.
 
+Sejak pembaruan navigasi role-aware, aplikasi melayani dua pengalaman yang dipisahkan berdasarkan peran akun. Pembeli memakai lima tab utama, sedangkan organizer langsung masuk ke dashboard event sebagai beranda dan memakai aksi Scan QR di tengah navbar untuk check-in. Pemisahan ini menghilangkan fitur pembeli yang tidak relevan bagi organizer tanpa mengubah struktur data di backend.
+
 Ruang lingkup laporan difokuskan pada aplikasi Android sebagai target demonstrasi. Layout tablet, desktop, dan web tetap diresponsifkan, tetapi pengujian perangkat baru dilakukan pada emulator/Chrome selama pengembangan.
 
 ### 1.2  Project Background and Objectives
@@ -125,8 +127,9 @@ Tujuan proyek:
 1. Menyatukan penemuan event, penyimpanan favorit, pembelian tiket, dan e-ticket dalam satu aplikasi.
 2. Menyediakan antarmuka yang konsisten dan responsif pada berbagai ukuran layar.
 3. Menyiapkan arsitektur yang siap diintegrasikan dengan backend Supabase dan Midtrans.
-4. Menyediakan alur check-in tiket melalui QR untuk panitia event.
-5. Mendokumentasikan progres secara terukur melalui pengujian otomatis dan bukti implementasi.
+4. Menyediakan pengalaman organizer yang terpisah, dengan dashboard sebagai beranda dan akses Scan QR dari navbar.
+5. Menyediakan alur check-in tiket melalui QR untuk panitia event.
+6. Mendokumentasikan progres secara terukur melalui pengujian otomatis dan bukti implementasi.
 
 ### 1.3  Functional Requirements
 
@@ -142,13 +145,14 @@ Kebutuhan fungsional diberi ID agar dapat ditelusuri ke layar, endpoint, dan tes
 | FR-06 | Voucher promo dan perhitungan biaya | RPC checkout + voucher seed | Selesai |
 | FR-07 | Memilih metode pembayaran | Widget test checkout | Selesai (simulasi) |
 | FR-08 | E-ticket ber-QR | Widget test tiket | Selesai |
-| FR-09 | Check-in tiket | RPC `check_in_ticket` + scan manual | Selesai (manual); kamera pending |
+| FR-09 | Check-in tiket | RPC `check_in_ticket` + Scan QR dari navbar organizer | Selesai (manual); kamera pending |
 | FR-10 | Filter tiket: Semua/Aktif/Selesai | Widget test tiket | Selesai |
-| FR-11 | Profil pengguna dan logout | Widget test navigasi + Supabase Auth | Selesai (Supabase) |
-| FR-12 | Dashboard organizer | Widget test organizer + statistik Supabase | Selesai (Supabase) |
+| FR-11 | Profil pengguna dan logout untuk pembeli/organizer | Widget test navigasi + profil organizer + Supabase Auth | Selesai (Supabase) |
+| FR-12 | Dashboard organizer sebagai beranda organizer | Widget test organizer + statistik Supabase | Selesai (Supabase) |
 | FR-13 | Notifikasi push | Belum ada | Rencana |
 | FR-14 | Unduh e-ticket PDF | `pdf` + `printing`, unduhan web | Selesai (web) |
 | FR-15 | Pembayaran riil (Midtrans) | Belum ada | Rencana |
+| FR-16 | Navigasi dan fitur menyesuaikan peran akun | `AppUser.isOrganizer` + `organizer_navigation_test.dart` | Selesai (7 test role-aware); kamera live pending |
 
 ### 1.4  Non-Functional Requirements
 
@@ -156,13 +160,13 @@ Kebutuhan fungsional diberi ID agar dapat ditelusuri ke layar, endpoint, dan tes
 |---|---|---|
 | Keamanan | Tidak ada kredensial sensitif di repositori; token tidak ditampilkan di UI | Supabase Auth + RLS; service role key tidak dipakai aplikasi |
 | Usability | Validasi form jelas, state loading/empty/error tersedia | Validasi inline + banner error, state error/retry pada tiket/favorit/beranda |
-| Responsif | Mobile, tablet, desktop tanpa overflow | Diuji otomatis pada 390, 768, 1080, 1366, 1400 px |
-| Aksesibilitas | Target sentuh 48 px, label semantics, tooltip | `AppIconButton`, rail berlabel, form auth, QR instruction |
+| Responsif | Mobile, tablet, desktop tanpa overflow | Diuji otomatis pada 390, 768, 1080, 1366, 1400 px; navbar organizer diuji pada 3 breakpoint |
+| Aksesibilitas | Target sentuh 48 px, label semantics, tooltip | `AppIconButton`, rail berlabel, form auth, QR instruction; aksi Scan QR organizer 104×84 pada mobile |
 | Kinerja | Daftar event dan gambar tidak membebani perangkat | Gambar memakai `cached_network_image`/`Image.asset` dengan fallback |
 | Maintainability | Pemisahan layer UI, provider, model, service | Struktur `core`, `models`, `providers`, `screens`, `services`, `widgets` |
 | Kompatibilitas | Android sebagai target utama; Flutter stabil | Flutter 3.47.5, Dart 3.13.4 |
 | Kualitas kode | Tidak ada issue analyzer | `flutter analyze`: No issues found |
-| Pengujian | Alur utama tercakup widget test dan verifikasi backend | 259/259 test lulus + 3 script backend pada 12 November 2026 |
+| Pengujian | Alur utama tercakup widget test dan verifikasi backend | 266/266 test lulus + 3 script backend pada 12 November 2026 |
 
 ### 1.5  Application Features and User Roles
 
@@ -172,10 +176,14 @@ Kebutuhan fungsional diberi ID agar dapat ditelusuri ke layar, endpoint, dan tes
 | Pengguna sebagai panitia/organizer | Dashboard organizer sebagai Beranda, statistik event, scan QR check-in dari navbar | Navbar organizer (Beranda · Scan QR · Profil) | Selesai (kode + uji otomatis); kamera live pending |
 | Administrator backend | Mengelola event, tiket, dan transaksi | Supabase Studio | Selesai (Supabase Studio) |
 
-Otorisasi diterapkan di server melalui Supabase Row Level Security: pengguna
-hanya membaca tiket/transaksi/favorit miliknya, organizer hanya mengelola event
-miliknya, dan check-in divalidasi oleh RPC `check_in_ticket`. Panel admin web
-kustom tidak dibuat; pengelolaan data memakai Supabase Studio.
+Peran akun dibaca dari `profiles.role` dan diterjemahkan oleh
+`AppUser.isOrganizer` (`organizer` atau `admin`). Nilai ini menentukan navigasi
+dan fitur yang dirender di klien: pembeli mendapat lima tab, sedangkan organizer
+mendapat Beranda (dashboard), Scan QR, dan Profil. Otorisasi data tetap
+diterapkan di server melalui Supabase Row Level Security: pengguna hanya membaca
+tiket/transaksi/favorit miliknya, organizer hanya mengelola event miliknya, dan
+check-in divalidasi oleh RPC `check_in_ticket`. Panel admin web kustom tidak
+dibuat; pengelolaan data memakai Supabase Studio.
 
 ### 1.6  Technology Stack Overview
 
@@ -266,47 +274,54 @@ Daftar tampilan dan status implementasi:
 | No | Tampilan | Status | Bukti |
 |---|---|---|---|
 | 1 | Splash | Selesai | Widget test boot |
-| 2 | Login | Selesai (Supabase Auth) | Verifikasi UI web |
+| 2 | Login | Selesai (Supabase Auth + routing per peran) | Verifikasi UI web |
 | 3 | Register | Selesai (Supabase Auth) | Kode implementasi |
-| 4 | Shell navigasi responsif | Selesai | Widget test 3 breakpoint |
+| 4 | Shell navigasi role-aware (pembeli 5 tab, organizer 3 slot) | Selesai | Widget test 3 breakpoint + 7 test organizer |
 | 5 | Beranda | Selesai (Supabase) | Widget test navigasi |
 | 6 | Jelajahi | Selesai (Supabase) | Widget test navigasi |
 | 7 | Tiket Saya | Selesai | Widget test 2 ukuran + PDF |
 | 8 | Favorit | Selesai (Supabase) | Widget test navigasi |
-| 9 | Profil | Selesai | Widget test navigasi |
+| 9 | Profil (pembeli/organizer) | Selesai | Widget test navigasi + profil organizer |
 | 10 | Detail Event | Selesai | Widget test 3 ukuran + regression bar |
 | 11 | Checkout | Selesai (pembayaran simulasi) | Widget test 3 ukuran |
 | 12 | Dialog sukses pembayaran | Selesai (simulasi) | Kode dan alur |
 | 13 | Bottom sheet kota dan logout | Selesai | Kode dan alur |
 
+Untuk akun organizer, deep link event dikonsumsi tanpa membuka Detail Event
+karena alur pembelian tiket tidak tersedia. Pembeli tetap diarahkan ke Detail
+Event seperti sebelumnya.
+
 **Gambar 3.** Navigation flowchart EventKuy. Status: placeholder; gambar final menyusul.
 
 ### 1.10  UI/UX Wireframe Design
 
-Desain mengikuti prototipe Figma dan dituangkan dalam `DESIGN_SPEC.md`. Arah visual: palet violet dengan aksen coral, tipografi Manrope untuk heading dan DM Sans untuk body, kartu membulat, dan gradien violet pada elemen branding.
+Desain mengikuti `DESIGN_SPEC.md` dan tema yang dipakai kode. Arah visual: "program acara cetak" — kertas hangat, tinta hampir hitam, satu aksen vermilion, tipografi Manrope untuk heading dan DM Sans untuk body, border 1 px, serta tanpa gradien dekoratif atau shadow lebar.
 
 Token visual utama:
 
 | Token | Nilai |
 |---|---|
-| Warna primer | `#6657EA` (violet) |
-| Warna primer gelap | `#4B3FC3` |
-| Warna aksen | `#FF6B6F` (coral) |
-| Warna teks utama | `#17152C` |
-| Warna teks sekunder | `#77758A` |
-| Latar kanvas | `#F7F7FB` |
-| Border | `#E8E7EF` |
-| Gradien utama | `#7263F4 -> #5848D7` |
-| Gradien tiket | `#33278A -> #6958E8` |
-| Gradien splash/auth | `#33278C -> #6454EB -> #9F56DF` |
+| Warna primer | `#C63C14` (vermilion; token lama `violet`) |
+| Warna primer gelap | `#8F2A0D` |
+| Warna aksen | `#C63C14` (coral) |
+| Warna teks utama | `#161310` |
+| Warna teks sekunder | `#6D665B` |
+| Latar kanvas | `#F4F1E8` |
+| Border | `#E3DCCF` |
+| Permukaan kartu | `#FFFFFF` |
+| Gradien dekoratif | Dihapus; branding memakai vermilion datar |
 
 Aturan responsif yang diterapkan:
 
 | Breakpoint | Lebar | Navigasi | Grid event | Padding konten |
 |---|---|---|---|---|
-| Mobile | < 720 px | Bottom bar mengambang 72 px | 2 kolom | 18 px |
+| Mobile | < 720 px | Bottom bar penuh, 78 px (pembeli) / 84 px (organizer) | 2 kolom | 18 px |
 | Tablet | 720–1100 px | Rail ikon + label 96 px | 3 kolom | 28 px |
 | Desktop | > 1100 px | Sidebar 240 px | 4 kolom | 32 px |
+
+Navbar organizer memakai tiga slot: Beranda (dashboard), aksi Scan QR di tengah
+(54×54 pada mobile, 48×48 pada rail, tombol penuh pada sidebar), dan Profil.
+Pembeli tetap memakai lima tab: Beranda, Jelajahi, Tiket, Favorit, dan Profil.
 
 Lebar konten maksimum 1200 px dan selalu dipusatkan pada layar besar. Kartu tiket memakai 1/2/3 kolom sesuai lebar.
 
@@ -326,6 +341,12 @@ Database sudah diimplementasikan pada Supabase (PostgreSQL). Entitas utama:
 | favorites | id, user_id, event_id, created_at | Unik per pasangan user/event |
 | vouchers | code, discount, active_from, active_to, quota | Voucher server-side |
 
+`profiles.role` menjadi sumber identitas peran di aplikasi. Nilai `organizer`
+atau `admin` membuat `AppUser.isOrganizer` bernilai true dan memilih navigasi
+organizer; nilai `pengguna` memakai pengalaman pembeli. Peran tidak dapat diubah
+dari aplikasi karena grant update pada `profiles` hanya mencakup `name` dan
+`avatar_url`.
+
 Relasi utama: satu user memiliki banyak ticket, transaction, dan favorite; satu event memiliki banyak ticket dan transaction; satu transaction menghasilkan satu ticket; satu ticket terkait satu event. RLS membatasi akses sesuai pemilik data dan organizer event.
 
 Catatan konsistensi: model Flutter memakai `eventId` dan `eventTitle` pada `Ticket`, serta `imageUrl` dan `timeRange` pada `Event`. Penamaan kolom database dan JSON diselaraskan melalui mapping (lihat Lampiran B).
@@ -342,6 +363,7 @@ dan RPC dengan sesi Supabase Auth:
 | Register/login/logout | Supabase Auth | Sesi pengguna | Selesai |
 | Daftar event | `events.select()` | Beranda/Jelajahi | Selesai |
 | Favorit | `favorites` select/insert/delete | Favorit pengguna | Selesai |
+| Profil dan peran | `profiles.select()` | Menentukan pengalaman pembeli/organizer | Selesai |
 | Checkout | RPC `checkout` | Transaksi + tiket + voucher | Selesai |
 | Tiket pengguna | `tickets.select()` | Tiket Saya | Selesai |
 | Tiket event | `tickets.select()` filter event | Dashboard organizer | Selesai |
@@ -384,7 +406,7 @@ Dependensi dipasang sesuai kebutuhan. Status pemakaian diperiksa langsung dari i
 | mobile_scanner | ^7.0.1 | Dipakai | Preview kamera dan scan QR |
 | pdf | ^3.13.1 | Dipakai | Membuat e-ticket PDF |
 | printing | ^5.15.1 | Dipakai | Share sheet/unduhan PDF |
-| image_picker | ^1.1.2 | Belum dipakai | Persiapkan unggah gambar |
+| image_picker | ^1.1.2 | Dipakai | Ambil avatar profil dan poster event dari galeri/kamera |
 | url_launcher | ^6.3.2 | Belum dipakai | Persiapkan tautan eksternal |
 | webview_flutter | ^4.13.0 | Belum dipakai | Persiapkan halaman web |
 | cupertino_icons | ^1.0.8 | Dipakai | Ikon bawaan |
@@ -441,6 +463,10 @@ lib/
 ```
 
 Pemisahan ini memudahkan penggantian `MockApiService` dengan `SupabaseApi` tanpa mengubah widget; `EventKuyApi` menjadi kontrak bersama.
+
+Pengujian navigasi role-aware ditempatkan di `test/organizer_navigation_test.dart`
+(7 kasus) dan ekspektasi profil organizer diperbarui di
+`test/profile_screen_test.dart`. Total file test aktif menjadi 40.
 
 ### 2.4  Configuring Environment Variables
 
@@ -507,24 +533,26 @@ Visual Studio tidak terpasang, tetapi tidak menghambat target Android dan web. P
 |---|---|
 | Repositori | `https://github.com/Acumalaka-ngod/-EventKuy-app.git` |
 | Branch aktif | `main` |
-| Commit terakhir | Riwayat fitur qty/stok/voucher/favorit + dokumen (lihat `git log -1`) |
+| Commit terakhir | `c3f3c46 feat(organizer): navigasi role-aware dengan Scan QR di navbar` |
 | Perubahan belum di-commit | Tidak ada setelah commit terakhir |
 | Artefak build | Diabaikan melalui `.gitignore` |
 
 Redesign UI, integrasi Supabase, test, dan dokumen sudah di-commit dan
-di-push ke remote `main`.
+di-push ke remote `main`. Pembaruan navigasi role-aware, test organizer, dan
+penyesuaian dokumen ikut di-push pada 12 November 2026.
 
 ### 2.8  Testing Environment
 
 | Perintah | Hasil |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | 259/259 lulus |
+| `flutter test` | 266/266 lulus (40 file test) |
+| `flutter test test/organizer_navigation_test.dart` | 7/7 lulus |
 | `flutter build web --release` | Sukses dengan `--dart-define-from-file=supabase.local.json` |
 | `flutter doctor` | Satu peringatan (Visual Studio tidak terpasang) |
 | `flutter run -d chrome` | Tersedia sebagai target pengembangan |
 
-Ukuran layar yang diuji otomatis: 390x844 (HP), 768x1024 (tablet), 1080x800 (laptop kecil), 1366x620 (jendela Chrome pendek), 1400x900 (desktop).
+Ukuran layar yang diuji otomatis: 390x844 (HP), 768x1024 (tablet), 1080x800 (laptop kecil), 1366x620 (jendela Chrome pendek), 1400x900 (desktop). Pengujian role-aware mencakup navbar organizer pada 390x844, rail tablet 768x1024, dan sidebar desktop 1400x900.
 
 ---
 
@@ -535,6 +563,11 @@ Ukuran layar yang diuji otomatis: 390x844 (HP), 768x1024 (tablet), 1080x800 (lap
 ### 3.1  Designing the EventKuy Database
 
 Database memakai PostgreSQL Supabase. Primary key memakai UUID, nilai uang memakai `numeric(12,2)`, dan status tiket dibatasi pada `pending`, `paid`, serta `checked_in`. Tabel `profiles` terhubung ke `auth.users` dan diisi otomatis oleh trigger `handle_new_user`.
+
+Kolom `profiles.role` menyimpan peran `pengguna`, `organizer`, atau `admin`
+dengan nilai default `pengguna`. Aplikasi membaca kolom ini untuk memilih
+pengalaman pembeli atau organizer, sedangkan RLS dan RPC tetap menjadi batas
+otorisasi data di server.
 
 Alasan pemilihan: kebutuhan relasional (user, event, tiket, transaksi, favorit) lebih mudah dijaga dengan foreign key, constraint, dan RLS dibanding penyimpanan dokumen.
 
@@ -569,7 +602,10 @@ Otorisasi diterapkan dengan Supabase Row Level Security:
 
 - Pengguna hanya dapat membaca tiket, transaksi, dan favorit miliknya.
 - Organizer hanya dapat mengelola event miliknya; RPC check-in menolak akun lain.
+- `profiles.role` dibaca klien untuk memilih navigasi pembeli atau organizer. Ini adalah lapisan UX, bukan pengganti otorisasi: RLS tetap membatasi data yang boleh dibaca.
+- Pengguna hanya mendapat grant update `name` dan `avatar_url` pada `profiles`, sehingga `role` tidak dapat dinaikkan sendiri dari aplikasi.
 - Check-in divalidasi di server melalui `check_in_ticket`; aplikasi tidak mengubah status tiket secara lokal.
+- Deep link event untuk organizer dikonsumsi tanpa membuka Detail Event. Keputusan ini bersifat UX dan tidak menghapus validasi kepemilikan event di server.
 - Kunci rahasia (service role key) tidak dipakai aplikasi; aplikasi hanya memakai publishable/anon key.
 
 ### 3.5  Seed Data
@@ -587,11 +623,15 @@ Seed berisi 7 event (Sound of Tomorrow, We The Fest 2025, Photography Workshop, 
 
 Verifikasi dijalankan lewat `tool/verify-supabase.ps1`, `tool/verify-organizer.ps1`, dan `tool/verify-e2e.ps1` pada 28 Oktober 2026. Rincian hasil ada pada bagian 9.2.
 
+Pengujian dampak peran ke tampilan aplikasi berada di bab 4. Bab ini memverifikasi
+constraint, default role, RLS, dan RPC; perubahan navigasi tidak mengubah skema
+database.
+
 ---
 
 ## 4  Authentication Implementation
 
-**Status: Selesai (Supabase Auth).** Login, logout, registrasi, dan pemulihan sesi memakai Supabase Auth. Profil diambil dari tabel `profiles`.
+**Status: Selesai (Supabase Auth).** Login, logout, registrasi, dan pemulihan sesi memakai Supabase Auth. Profil diambil dari tabel `profiles`. Sejak pembaruan role-aware, hasil autentikasi menentukan pengalaman yang dibuka: pembeli masuk ke lima tab, sedangkan organizer masuk ke dashboard sebagai beranda.
 
 ### 4.1  Current Authentication Flow
 
@@ -599,16 +639,25 @@ Verifikasi dijalankan lewat `tool/verify-supabase.ps1`, `tool/verify-organizer.p
 Splash
   -> AuthProvider.tryAutoLogin()
      -> Supabase.instance.client.auth.currentUser
-        -> ada: baca profil -> MainNavigation
-        -> tidak: LoginScreen
-LoginScreen -> signInWithPassword -> baca profil -> MainNavigation
-RegisterScreen -> signUp(name, email, password) -> sesi -> MainNavigation
+        -> ada: baca profil (termasuk role)
+           -> role organizer/admin: lewati tiket & favorit -> MainNavigation
+              (Beranda = Dashboard Organizer, Scan QR, Profil)
+           -> role pengguna: muat tiket & favorit -> MainNavigation
+              (Beranda, Jelajahi, Tiket, Favorit, Profil)
+        -> tidak ada sesi: LoginScreen
+LoginScreen -> signInWithPassword -> baca profil -> muat data sesuai peran -> MainNavigation
+RegisterScreen -> signUp(name, email, password) -> profil default 'pengguna' -> MainNavigation pembeli
 Logout -> signOut -> LoginScreen
 ```
 
 ### 4.2  Login Screen
 
 Layar login berisi email, password dengan toggle visibilitas, checkbox "Ingat saya", tautan "Lupa Password?", tombol "Masuk Sekarang", tombol Google/Apple (belum berfungsi), dan tautan registrasi. Form memakai `Form` + `TextFormField` + `AutofillGroup`; validasi inline memeriksa email wajib/format dan password wajib. Error server tampil di `FormErrorBanner` (live region), bukan SnackBar. Checkbox, link "Lupa Password?", dan "Daftar Sekarang" memiliki target sentuh minimal 48 px, dan toggle password memakai tooltip dinamis. Kredensial demo tidak ditanam di kode; nilai diisi dari `supabase.local.json` saat verifikasi.
+
+Setelah login berhasil, `_loadUserData()` hanya memuat tiket dan favorit untuk
+akun pembeli. Untuk organizer, pemuatan itu dilewati karena dashboard memuat
+datanya sendiri; `MainNavigation` kemudian membaca `AppUser.isOrganizer` dan
+menampilkan pengalaman organizer.
 
 ### 4.3  Register Screen
 
@@ -622,22 +671,35 @@ Form registrasi mencakup nama, email, password, konfirmasi password, dan persetu
 
 Field memakai autofill hint nama/email/password baru, error server tampil di `FormErrorBanner`, dan target sentuh minimal 48 px. Setelah `signUp` sukses dan sesi tersedia, pengguna langsung masuk. Konfirmasi email dinonaktifkan di project demo agar alur dapat diuji.
 
+Akun hasil registrasi mendapat `role` default `pengguna`, sehingga langsung
+memakai pengalaman pembeli. Peran organizer tidak dibuat melalui form registrasi;
+nilainya diatur di Supabase Studio pada tabel `profiles`.
+
 ### 4.4  AuthProvider Implementation
 
 `AuthProvider` memakai `Supabase.instance.client.auth`:
 
-- `tryAutoLogin()` membaca `currentUser` lalu memuat profil.
+- `tryAutoLogin()` membaca `currentUser` lalu memuat profil beserta `role`.
 - `login()` memanggil `signInWithPassword`.
 - `register()` memanggil `signUp` dengan metadata `name`.
 - `resetPassword()` memanggil `resetPasswordForEmail`.
 - `logout()` memanggil `signOut` dan membersihkan state lokal.
+- `_toAppUser()` membaca `name`, `role`, dan `avatar_url` dari `profiles`; `role` yang tidak tersedia jatuh ke `pengguna`.
+- `AppUser.isOrganizer` bernilai true untuk `organizer` dan `admin`.
+- Constructor `AuthProvider(initialUser:)` dipakai widget test untuk mensimulasikan sesi tanpa jaringan.
 
-Sesi disimpan dan di-refresh oleh `supabase_flutter`. Email diambil dari sesi auth, bukan dari tabel `profiles`; password di-hash oleh Supabase Auth.
+`AuthProvider` tidak menyimpan flag navigasi terpisah. `MainNavigation` membaca
+`AppUser.isOrganizer` untuk memilih halaman, item navbar, dan data yang dimuat.
+Sesi disimpan dan di-refresh oleh `supabase_flutter`. Email diambil dari sesi
+auth, bukan dari tabel `profiles`; password di-hash oleh Supabase Auth.
 
 ### 4.5  Security Notes
 
 - Aplikasi hanya memakai publishable/anon key; service role key tidak boleh masuk aplikasi.
 - RLS membatasi data per pengguna dan organizer.
+- `profiles.role` hanya menentukan pengalaman UI. Otorisasi tetap dilakukan RLS dan RPC, sehingga menyembunyikan tab pembeli bukan satu-satunya kontrol keamanan.
+- Pengguna hanya dapat membaca profilnya sendiri dan hanya boleh mengubah `name` serta `avatar_url`; `role` tidak dapat dieskalasi dari aplikasi.
+- Deep link event untuk organizer tidak membuka Detail Event. Ini keputusan UX; RPC check-in tetap memeriksa kepemilikan event di server.
 - `supabase.local.json` di-ignore dan tidak di-commit.
 - Reset password memakai alur email Supabase; pengujian email belum dilakukan.
 
@@ -645,17 +707,19 @@ Sesi disimpan dan di-refresh oleh `supabase_flutter`. Email diambil dari sesi au
 
 | Test ID | Skenario | Expected Result | Actual Result | Status |
 |---|---|---|---|---|
-| AUTH-01 | Login attendee dengan data benar | Masuk ke MainNavigation | Lulus (headless Chrome) | Selesai |
+| AUTH-01 | Login attendee dengan data benar | Masuk ke MainNavigation pembeli (5 tab) | Lulus (headless Chrome) | Selesai |
 | AUTH-02 | Login dengan field kosong | Error inline, tidak berpindah layar | Lulus `auth_form_test.dart` | Selesai |
 | AUTH-03 | Registrasi dengan konfirmasi password berbeda | Error inline | Lulus `auth_form_test.dart` | Selesai |
-| AUTH-04 | Sesi dipulihkan setelah reload | Langsung ke beranda | Mekanisme `tryAutoLogin` tersedia; reload belum diuji | Sebagian |
-| AUTH-05 | Logout lalu login kembali | Kembali ke login, tiket tetap ada | Lulus (headless Chrome) | Selesai |
-| AUTH-06 | Login organizer | Dashboard organizer terbuka | Lulus (headless Chrome) | Selesai |
+| AUTH-04 | Sesi dipulihkan setelah reload | Pembeli ke beranda, organizer ke dashboard | Mekanisme `tryAutoLogin` membaca role; reload belum diuji | Sebagian |
+| AUTH-05 | Logout lalu login kembali | Kembali ke login; data dimuat sesuai peran | Lulus untuk pembeli (headless Chrome); role-aware belum diuji ulang di Chrome | Selesai (pembeli) |
+| AUTH-06 | Login organizer | Dashboard organizer sebagai Beranda, navbar Beranda · Scan QR · Profil, tanpa tab pembeli | Lulus `organizer_navigation_test.dart`; Chrome ulang belum | Selesai (otomatis) |
 | AUTH-07 | Email invalid, password <8, nama <2, terms belum dicentang | Semua error inline | Lulus `auth_form_test.dart` | Selesai |
 | AUTH-08 | Error server login/register | Banner, bukan SnackBar | Lulus `auth_form_test.dart` | Selesai |
 | AUTH-09 | Autofill hint, target 48, tooltip password dinamis | Semua terpenuhi | Lulus `auth_form_test.dart` | Selesai |
+| AUTH-10 | Organizer menekan Scan QR dari navbar lalu kembali | ScanScreen terbuka; dashboard tampil lagi dan statistik dimuat ulang | Lulus `organizer_navigation_test.dart` | Selesai |
+| AUTH-11 | Deep link event diterima pembeli/organizer | Pembeli membuka Detail Event; organizer tetap di dashboard dan antrean dikonsumsi | Lulus `organizer_navigation_test.dart` | Selesai |
 
-Bukti otomatis: `test/auth_form_test.dart` (9 test) mencakup validasi inline, autofill, banner error server, target sentuh, terms tidak pre-checked, dan tooltip password. Pengujian login/logout nyata dilakukan manual melalui UI web pada 28 Oktober 2026; registrasi dengan email sungguhan dan reset password via email belum diuji.
+Bukti otomatis: `test/auth_form_test.dart` (9 test) mencakup validasi inline, autofill, banner error server, target sentuh, terms tidak pre-checked, dan tooltip password. `test/organizer_navigation_test.dart` (7 test) mencakup navbar organizer mobile/tablet/desktop, aksi Scan QR, profil organizer, dan deep link pembeli/organizer. Total suite menjadi 266/266 lulus. Pengujian login/logout nyata dilakukan manual melalui UI web pada 28 Oktober 2026; verifikasi Chrome setelah perubahan role-aware, registrasi dengan email sungguhan, dan reset password via email belum diuji.
 
 ---
 
