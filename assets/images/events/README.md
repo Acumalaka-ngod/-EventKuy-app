@@ -35,11 +35,30 @@ Simpan foto/poster event kamu di folder ini.
 
 ### 2. Lewat Supabase Storage (disarankan untuk produksi)
 
-1. Jalankan `supabase/storage.sql` sekali di SQL Editor Supabase
-   (membuat bucket publik `event-images` + policy).
-2. Upload gambar lewat **Supabase Studio > Storage > event-images**.
-3. Ambil **Public URL** file tersebut, lalu isi `image_url` event dengan URL
-   itu, contoh:
+1. Jalankan migrasi berikut sekali di SQL Editor Supabase:
+   - `supabase/schema.sql` - tabel, view, RPC, dan RLS dasar.
+   - `supabase/p2_event_content.sql` - tabel `organizers`, kolom rating.
+   - `supabase/organizer_events.sql` - GRANT `select, insert, update`
+     pada `public.events` untuk role `authenticated`.
+   - `supabase/storage.sql` - bucket publik `event-images` + policy upload.
+2. Pastikan akun organizer punya `profiles.role = 'organizer'`. Role ini
+   dipakai policy Storage untuk mengizinkan upload.
+3. Buka aplikasi sebagai organizer, lalu:
+   **Profil -> Dashboard Organizer -> Buat Event Baru** (atau tap kartu
+   event untuk mengedit). Pada bagian **Poster Event**, pilih
+   **Pilih dari Galeri** atau **Ambil dari Kamera**. Poster diunggah ke
+   bucket `event-images` saat tombol simpan ditekan.
+4. URL publik otomatis disimpan ke `events.image_url`, jadi tidak perlu
+   menyalin URL secara manual lewat Supabase Studio.
+
+Upload dari aplikasi menerima **JPG, PNG, dan WebP** maksimal **5 MB**.
+Format ditentukan dari isi file (magic bytes), jadi GIF yang diganti
+ekstensinya tetap ditolak. File lama di Storage dihapus otomatis setelah
+poster baru berhasil disimpan.
+
+Upload manual lewat **Supabase Studio > Storage > event-images** tetap
+bisa dipakai sebagai cadangan. Ambil **Public URL** file tersebut, lalu isi
+`image_url` event dengan URL itu, contoh:
 
    ```
    https://<project>.supabase.co/storage/v1/object/public/event-images/konser-kampus.jpg

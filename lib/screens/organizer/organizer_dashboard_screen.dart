@@ -10,10 +10,11 @@ import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
 import '../../providers/ticket_provider.dart';
 import '../../widgets/app_logo.dart';
+import '../../widgets/custom_button.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/event_image.dart';
-import '../event/event_detail_screen.dart';
 import '../scan/scan_screen.dart';
+import 'organizer_event_editor_screen.dart';
 
 /// Dashboard Event Organizer — sesuai desain baru:
 /// kartu event dengan badge status, statistik peserta/check-in/terjual,
@@ -28,7 +29,7 @@ class OrganizerDashboardScreen extends StatefulWidget {
 
 class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
   List<Ticket> _eventTickets = const [];
-  String? _loadedEventId;
+  String? _loadedEventsKey;
   bool _loadingStats = false;
 
   @override
@@ -40,44 +41,54 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
         events
             .loadEvents()
             .then((_) {
-              if (mounted) _loadStatsForFirstEvent();
+              if (mounted) _loadStats();
             })
             .catchError((_) {});
       } else {
-        _loadStatsForFirstEvent();
+        _loadStats();
       }
     });
   }
 
-  Future<void> _loadStatsForFirstEvent({bool force = false}) async {
+  /// Statistik dihitung dari seluruh event milik organizer yang login.
+  Future<void> _loadStats({bool force = false}) async {
     if (!mounted) return;
 
     final user = context.read<AuthProvider>().user;
-    final events = context.read<EventProvider>().events;
-    final event = _eventForUser(user?.id, events);
-    if (event == null) {
-      if (_loadedEventId != null) {
+    final myEvents = _eventsForUser(
+      user?.id,
+      context.read<EventProvider>().events,
+    );
+    if (myEvents.isEmpty) {
+      if (_loadedEventsKey != null) {
         setState(() {
           _eventTickets = const [];
-          _loadedEventId = null;
+          _loadedEventsKey = null;
           _loadingStats = false;
         });
       }
       return;
     }
 
-    final eventId = event.id;
-    if (!force && _loadedEventId == eventId) return;
+    final key = _eventsKey(myEvents);
+    if (!force && _loadedEventsKey == key) return;
 
     setState(() => _loadingStats = true);
+    final tickets = <Ticket>[];
     try {
-      final tickets = await context.read<TicketProvider>().ticketsForEvent(
-        eventId,
-      );
+      final provider = context.read<TicketProvider>();
+      for (final event in myEvents) {
+        try {
+          tickets.addAll(await provider.ticketsForEvent(event.id));
+        } catch (_) {
+          // Satu event gagal dimuat tidak boleh mengosongkan statistik
+          // event lainnya.
+        }
+      }
       if (!mounted) return;
       setState(() {
         _eventTickets = tickets;
-        _loadedEventId = eventId;
+        _loadedEventsKey = key;
         _loadingStats = false;
       });
     } catch (_) {
@@ -90,15 +101,17 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
   }
 
   /// Event yang ditampilkan harus milik organizer yang sedang login.
-  /// Saat `userId` null (mis. widget test), pakai event pertama sebagai fallback.
-  Event? _eventForUser(String? userId, List<Event> events) {
-    if (events.isEmpty) return null;
-    if (userId == null) return events.first;
-    for (final event in events) {
-      if (event.organizerId == userId) return event;
+  /// Saat `userId` null (mis. widget test), pakai event pertama sebagai
+  /// fallback agar dashboard tetap bisa dirender tanpa sesi.
+  List<Event> _eventsForUser(String? userId, List<Event> events) {
+    if (userId == null) {
+      return events.isEmpty ? const [] : [events.first];
     }
-    return null;
+    return events.where((event) => event.organizerId == userId).toList();
   }
+
+  String _eventsKey(List<Event> events) =>
+      events.map((event) => event.id).join(',');
 
   @override
   Widget build(BuildContext context) {
@@ -119,12 +132,13 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
       );
     }
     final eventProvider = context.watch<EventProvider>();
-    final events = eventProvider.events;
-    final event = _eventForUser(user?.id, events);
+    final myEvents = _eventsForUser(user?.id, eventProvider.events);
 
-    if (event != null && _loadedEventId != event.id && !_loadingStats) {
+    if (myEvents.isNotEmpty &&
+        _loadedEventsKey != _eventsKey(myEvents) &&
+        !_loadingStats) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadStatsForFirstEvent();
+        if (mounted) _loadStats();
       });
     }
 
@@ -138,7 +152,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
             onRefresh: () async {
               await eventProvider.loadEvents(force: true);
               if (!mounted) return;
-              await _loadStatsForFirstEvent(force: true);
+              await _loadStats(force: true);
             },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -175,13 +189,31 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
                     letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 6),
+                const Text(
+                  'Kelola event yang kamu selenggarakan.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 18),
 
-                if (event != null) ...[
-                  _buildEventCard(event),
-                  const SizedBox(height: 16),
-                  _buildStatsRow(event),
+                if (myEvents.isNotEmpty) ...[
+                  _buildStatsRow(),
                   const SizedBox(height: 22),
+                  _buildEventListHeader(myEvents.length),
+                  const SizedBox(height: 10),
+                  ...myEvents.map(
+                    (event) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildEventCard(
+                        event,
+                        onTap: () => _openEditor(event),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   const Text(
                     'Kelola Event',
                     style: TextStyle(
@@ -192,7 +224,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _buildManageList(context, event),
+                  _buildManageList(context),
                 ] else if (!eventProvider.loading) ...[
                   _buildNoEvent(),
                 ],
@@ -205,6 +237,64 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
     );
   }
 
+  Future<void> _openEditor([Event? event]) async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrganizerEventEditorScreen(event: event),
+      ),
+    );
+    if (!mounted || saved != true) return;
+
+    final events = context.read<EventProvider>();
+    await events.loadEvents(force: true);
+    if (!mounted) return;
+    await _loadStats(force: true);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          event == null
+              ? 'Event berhasil dibuat.'
+              : 'Event berhasil diperbarui.',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildEventListHeader(int count) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Event Saya ($count)',
+            style: const TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textDark,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: _openEditor,
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: const Text('Buat Event Baru'),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(0, 44),
+            foregroundColor: AppTheme.primary,
+            textStyle: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildNoEvent() {
     return Container(
       width: double.infinity,
@@ -214,11 +304,15 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.border),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(Icons.event_busy_rounded, size: 38, color: AppTheme.textGrey),
-          SizedBox(height: 12),
-          Text(
+          const Icon(
+            Icons.event_busy_rounded,
+            size: 38,
+            color: AppTheme.textGrey,
+          ),
+          const SizedBox(height: 12),
+          const Text(
             'Belum ada event yang dikelola',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -227,10 +321,10 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
               color: AppTheme.textDark,
             ),
           ),
-          SizedBox(height: 6),
-          Text(
-            'Hubungkan akun organizer ke event lewat SQL Editor, '
-            'lalu buka kembali dashboard ini.',
+          const SizedBox(height: 6),
+          const Text(
+            'Buat event pertamamu dari aplikasi. Poster, jadwal, lokasi, '
+            'harga, dan kuota bisa diatur sendiri.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11.5,
@@ -238,59 +332,78 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
               color: AppTheme.textMuted,
             ),
           ),
+          const SizedBox(height: 16),
+          CustomButton(
+            label: 'Buat Event Baru',
+            icon: Icons.add_rounded,
+            onPressed: _openEditor,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildEventCard(Event event) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+  Widget _buildEventCard(Event event, {required VoidCallback onTap}) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
+        side: const BorderSide(color: AppTheme.border),
       ),
-      child: Row(
-        children: [
-          EventImage(
-            imageUrl: event.imageUrl,
-            eventId: event.id,
-            height: 64,
-            width: 64,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppTheme.textDark,
-                  ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              EventImage(
+                imageUrl: event.imageUrl,
+                eventId: event.id,
+                height: 64,
+                width: 64,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppTheme.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${formatTanggal(event.date)} • '
+                      '${venueOf(event.location)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    _buildStatusBadge(event.date),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${formatTanggal(event.date)} • ${venueOf(event.location)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 11.5,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                _buildStatusBadge(event.date),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppTheme.textGrey,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -320,7 +433,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
     );
   }
 
-  Widget _buildStatsRow(Event event) {
+  Widget _buildStatsRow() {
     final sold = _eventTickets
         .where((t) => t.status == 'paid' || t.status == 'checked_in')
         .length;
@@ -403,7 +516,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
     );
   }
 
-  Widget _buildManageList(BuildContext context, Event event) {
+  Widget _buildManageList(BuildContext context) {
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
@@ -413,26 +526,6 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          _buildMenuTile(
-            icon: Icons.event_note_rounded,
-            color: AppTheme.primary,
-            title: 'Detail Event',
-            subtitle: 'Ubah informasi event',
-            onTap: () async {
-              final events = context.read<EventProvider>();
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EventDetailScreen(event: event),
-                ),
-              );
-              if (!mounted) return;
-              await events.loadEvents(force: true);
-              if (!mounted) return;
-              await _loadStatsForFirstEvent(force: true);
-            },
-          ),
-          const Divider(height: 1, indent: 66),
           _buildMenuTile(
             icon: Icons.groups_rounded,
             color: const Color(0xFF2563EB),
@@ -468,7 +561,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
                 MaterialPageRoute(builder: (_) => const ScanScreen()),
               );
               if (!mounted) return;
-              _loadStatsForFirstEvent(force: true);
+              _loadStats(force: true);
             },
           ),
         ],

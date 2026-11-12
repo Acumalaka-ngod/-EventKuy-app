@@ -4,6 +4,7 @@ import '../models/app_notification.dart';
 import '../models/check_in_result.dart';
 import '../models/checkout_result.dart';
 import '../models/event.dart';
+import '../models/event_draft.dart';
 import '../models/organizer.dart';
 import '../models/ticket.dart';
 import '../models/transaction_record.dart';
@@ -13,6 +14,13 @@ import 'api_service.dart';
 /// Data layer palsu untuk widget test (tanpa jaringan/Supabase).
 /// Aplikasi produksi memakai [SupabaseApi].
 class MockApiService implements EventKuyApi {
+  MockApiService({this.organizerId});
+
+  /// ID organizer yang dipakai untuk event baru. Di produksi nilainya
+  /// berasal dari sesi Supabase; di test diisi agar dashboard bisa
+  /// memfilter event milik user.
+  final String? organizerId;
+
   final Set<String> _favorites = {};
   final Set<String> _usedVouchers = {};
   final List<Ticket> _tickets = [];
@@ -227,6 +235,59 @@ class MockApiService implements EventKuyApi {
     return _events
         .map((event) => event.copyWith(sold: _soldOf(event)))
         .toList(growable: false);
+  }
+
+  @override
+  Future<Event> createEvent(EventDraft draft) async {
+    final event = Event(
+      id: 'mock-event-${DateTime.now().microsecondsSinceEpoch}',
+      organizerId: organizerId,
+      title: draft.title.trim(),
+      description: draft.description.trim(),
+      date: DateTime(draft.date.year, draft.date.month, draft.date.day),
+      location: draft.location.trim(),
+      price: draft.price,
+      quota: draft.quota,
+      imageUrl: draft.imageUrl.trim(),
+      imageUrls: List.unmodifiable(draft.imageUrls),
+      category: draft.category.trim(),
+      tags: List.unmodifiable(draft.tags),
+      timeRange: draft.timeRange.trim(),
+    );
+    _events.add(event);
+    _events.sort((a, b) => a.date.compareTo(b.date));
+    return event;
+  }
+
+  @override
+  Future<Event> updateEvent(String eventId, EventDraft draft) async {
+    final index = _events.indexWhere((event) => event.id == eventId);
+    if (index == -1) throw StateError('Event tidak ditemukan.');
+
+    final old = _events[index];
+    final updated = Event(
+      id: old.id,
+      organizerId: old.organizerId,
+      organizerProfileId: old.organizerProfileId,
+      organizer: old.organizer,
+      title: draft.title.trim(),
+      description: draft.description.trim(),
+      date: DateTime(draft.date.year, draft.date.month, draft.date.day),
+      location: draft.location.trim(),
+      price: draft.price,
+      quota: draft.quota,
+      sold: old.sold,
+      imageUrl: draft.imageUrl.trim(),
+      imageUrls: List.unmodifiable(draft.imageUrls),
+      category: draft.category.trim(),
+      tags: List.unmodifiable(draft.tags),
+      timeRange: draft.timeRange.trim(),
+      rating: old.rating,
+      ratingCount: old.ratingCount,
+    );
+    _events[index] = updated;
+    _events.sort((a, b) => a.date.compareTo(b.date));
+    return updated;
   }
 
   @override

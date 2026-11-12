@@ -86,7 +86,7 @@ Capaian utama per 8 November 2026:
 2. Autentikasi memakai Supabase Auth (email/password); sesi dikelola `supabase_flutter` dan profil dibaca dari tabel `profiles`.
 3. Alur tiket berjalan: event dari Supabase, checkout dengan voucher lewat RPC `checkout`, tiket ber-QR, unduh PDF, serta check-in organizer lewat RPC `check_in_ticket`.
 4. Dashboard organizer menampilkan statistik nyata dari Supabase dan hanya event milik organizer yang login.
-5. `flutter analyze` menghasilkan **No issues found**, `flutter test` lulus **213 dari 213 pengujian**, dan `flutter build web --release` sukses.
+5. `flutter analyze` menghasilkan **No issues found**, `flutter test` lulus **259 dari 259 pengujian**, dan `flutter build web --release` sukses.
 6. Verifikasi UI web dengan headless Chrome mencakup login attendee/organizer, tiket, PDF, tiket tetap ada setelah login ulang, check-in manual, dan bottom bar detail event pada 390x844, 768x1024, serta 1400x900.
 7. Audit UI/UX awal memberi skor **6.1/10**. Remediasi P1 (form auth, state error/retry, favorit, navigasi, checkout, aksesibilitas) selesai dan diuji. P2 (lokalisasi, reduced motion, token desain, organizer/rating nyata, buyer data, deep link, native share, notifikasi scaffold) selesai kecuali dark mode dan push live. Penilaian mandiri setelah P1+P2 adalah **8.4/10** (belum audit independen).
 8. Yang belum selesai: pemindaian kamera di Chrome/Android, share sheet PDF di perangkat, build APK, pembayaran Midtrans, dark mode, dan pengiriman push notification live (menunggu kredensial Firebase).
@@ -98,10 +98,10 @@ Capaian utama per 8 November 2026:
 | Database dan backend | Selesai (Supabase) | `supabase/schema.sql`, `seed.sql`, `tool/verify-supabase.ps1` |
 | Autentikasi | Selesai (Supabase Auth) | Login/logout attendee dan organizer terverifikasi; validasi form otomatis |
 | Integrasi REST API | Selesai (Supabase) | `SupabaseApi`, RPC checkout/check-in |
-| UI mobile | Selesai | 168 widget/unit test pada 390–1400 px, verifikasi headless Chrome |
+| UI mobile | Selesai | 259 widget/unit test pada 390–1400 px, verifikasi headless Chrome |
 | QR, e-ticket, check-in | Berjalan | QR asli, PDF, check-in server; kamera pending |
 | Dashboard organizer | Selesai (Supabase) | Statistik nyata, filter `organizerId` |
-| Pengujian | Berjalan | 168 widget/unit test + 3 script verifikasi backend |
+| Pengujian | Berjalan | 259 widget/unit test + 3 script verifikasi backend |
 | Rilis | Berjalan | Build web sukses; APK dan perangkat pending |
 
 ---
@@ -162,7 +162,7 @@ Kebutuhan fungsional diberi ID agar dapat ditelusuri ke layar, endpoint, dan tes
 | Maintainability | Pemisahan layer UI, provider, model, service | Struktur `core`, `models`, `providers`, `screens`, `services`, `widgets` |
 | Kompatibilitas | Android sebagai target utama; Flutter stabil | Flutter 3.47.5, Dart 3.13.4 |
 | Kualitas kode | Tidak ada issue analyzer | `flutter analyze`: No issues found |
-| Pengujian | Alur utama tercakup widget test dan verifikasi backend | 168/168 test lulus + 3 script backend pada 8 November 2026 |
+| Pengujian | Alur utama tercakup widget test dan verifikasi backend | 259/259 test lulus + 3 script backend pada 12 November 2026 |
 
 ### 1.5  Application Features and User Roles
 
@@ -515,7 +515,7 @@ di-push ke remote `main`.
 | Perintah | Hasil |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | 168/168 lulus |
+| `flutter test` | 259/259 lulus |
 | `flutter build web --release` | Sukses dengan `--dart-define-from-file=supabase.local.json` |
 | `flutter doctor` | Satu peringatan (Visual Studio tidak terpasang) |
 | `flutter run -d chrome` | Tersedia sebagai target pengembangan |
@@ -920,9 +920,9 @@ Verifikasi web: `EventKuy-EVK-984AADA30215.pdf` berhasil diunduh, ukuran 16.547 
 
 ### 8.1  Dashboard
 
-Layar "Dashboard Event Organizer" menampilkan logo, avatar, kartu event aktif (judul, tanggal, venue, badge status), tiga kartu statistik, dan daftar menu "Kelola Event".
+Layar "Dashboard Event Organizer" menampilkan logo, avatar, daftar seluruh event milik organizer (judul, tanggal, venue, badge status), tiga kartu statistik agregat, tombol **Buat Event Baru**, dan daftar menu "Kelola Event". Mengetuk kartu event membuka form edit.
 
-Statistik dihitung dari tiket event milik organizer yang login:
+Statistik dihitung dari tiket seluruh event milik organizer yang login:
 
 ```text
 Tiket Terjual = jumlah tiket berstatus paid + checked_in
@@ -930,34 +930,58 @@ Total Peserta = jumlah tiket berstatus paid + checked_in
 Check-in      = jumlah tiket berstatus checked_in
 ```
 
-Event yang ditampilkan difilter dengan `event.organizerId == user.id`. Jika organizer belum punya event, dashboard menampilkan empty state, bukan event milik organizer lain.
+Event yang ditampilkan difilter dengan `event.organizerId == user.id`. Jika organizer belum punya event, dashboard menampilkan empty state berisi tombol **Buat Event Baru**, bukan event milik organizer lain.
 
 Verifikasi 28 Oktober 2026 pada event Sound of Tomorrow: 3 tiket terjual,
 3 peserta, dan 2 check-in saat dashboard diperiksa. Setelah check-in manual
 `EVK-2EA0A2563B97`, jumlah check-in menjadi 3.
 
-### 8.2  Manage Menu
+### 8.2  Form Event (Buat & Edit)
+
+Form `OrganizerEventEditorScreen` dipakai untuk membuat event baru dan mengubah event yang sudah ada. Kolom yang bisa diubah organizer:
+
+| Kolom | Validasi |
+|---|---|
+| Nama event | Wajib, 3–80 karakter |
+| Deskripsi | Wajib, 10–2000 karakter |
+| Kategori | Pilihan: Konser, Seminar, Workshop, Olahraga |
+| Tanggal | Date picker |
+| Waktu | Jam mulai dan jam selesai; selesai harus setelah mulai |
+| Lokasi | Wajib, 3–200 karakter |
+| Harga tiket | Wajib, angka ≥ 0 |
+| Kuota | Wajib, angka ≥ 0 |
+| Poster | JPG/PNG/WebP, maksimal 5 MB |
+
+Poster dipilih dari galeri atau kamera lewat `image_picker`, divalidasi dari magic bytes, lalu diunggah ke Supabase Storage bucket `event-images`. Public URL disimpan ke `events.image_url`; file poster lama dihapus setelah penyimpanan berhasil. Saat edit, jumlah tiket terjual dan rating tidak berubah. Hapus event belum termasuk cakupan.
+
+### 8.3  Manage Menu
 
 | Menu | Aksi | Status |
 |---|---|---|
-| Detail Event | Membuka detail event | Selesai |
+| Kartu event | Membuka form edit event | Selesai |
+| Buat Event Baru | Membuka form event kosong | Selesai |
 | Peserta | Snackbar "akan hadir di Fase Berikutnya" | Rencana |
 | Tiket | Snackbar "akan hadir di Fase Berikutnya" | Rencana |
 | Laporan | Snackbar "akan hadir di Fase Berikutnya" | Rencana |
 | Scan QR Check-in | Membuka layar scan | Selesai; kamera pending |
 
-### 8.3  Reporting Plan
+### 8.4  Reporting Plan
 
 Laporan organizer dapat dikembangkan dari tabel `tickets` dan `transactions`: pendapatan, tingkat kehadiran, dan tren penjualan per event. Grafik dan ekspor laporan belum termasuk cakupan saat ini.
 
-### 8.4  Testing Status
+### 8.5  Testing Status
 
 | Test ID | Skenario | Expected Result | Actual Result | Status |
 |---|---|---|---|---|
 | ORG-01 | Dashboard tampil pada mobile dan desktop | Semua kartu statistik dan menu tampil, tanpa overflow | Lulus (390 dan 1400) | Selesai |
-| ORG-02 | Buka detail event dari menu organizer | Detail event tampil | Lulus (widget test) | Selesai |
+| ORG-02 | Buka detail event dari dashboard | Detail event tampil | Lulus (widget test) | Selesai |
 | ORG-03 | Statistik dari data transaksi nyata | Angka sesuai database | Lulus (3 peserta, 3 tiket, 2→3 check-in) | Selesai |
 | ORG-04 | Organizer tanpa event | Empty state tampil | Lulus (widget test) | Selesai |
+| ORG-05 | Buat event baru dari form | Event tersimpan dan muncul di dashboard | Lulus (widget test) | Selesai |
+| ORG-06 | Edit nama, deskripsi, lokasi, waktu | Perubahan tersimpan, sold/rating tetap | Lulus (widget test) | Selesai |
+| ORG-07 | Upload poster dari galeri | Poster diunggah, `image_url` terisi | Lulus (fake uploader); live Supabase pending | Selesai (kode) |
+| ORG-08 | Pilih GIF sebagai poster | Ditolak sebelum upload | Lulus (widget test) | Selesai |
+| ORG-09 | Form di layar 390x844 | Tidak ada overflow saat digulir | Lulus (widget test) | Selesai |
 
 ---
 
@@ -986,10 +1010,10 @@ pwsh -File tool/verify-e2e.ps1
 
 | Item | Hasil |
 |---|---|
-| Tanggal eksekusi | 8 November 2026 |
+| Tanggal eksekusi | 12 November 2026 |
 | `flutter analyze` | No issues found (0 issue) |
-| `flutter test` | 168 lulus, 0 gagal |
-| Jumlah file test | 27 file (termasuk `auth_form_test.dart`, `data_state_test.dart`, `navigation_notifications_test.dart`, `checkout_form_test.dart`, `search_sync_test.dart`, `home_states_test.dart`, `accessibility_controls_test.dart`, `avatar_service_test.dart`) |
+| `flutter test` | 259 lulus, 0 gagal |
+| Jumlah file test | 39 file (termasuk `auth_form_test.dart`, `data_state_test.dart`, `navigation_notifications_test.dart`, `checkout_form_test.dart`, `search_sync_test.dart`, `home_states_test.dart`, `accessibility_controls_test.dart`, `avatar_service_test.dart`, `event_crud_test.dart`, `event_image_service_test.dart`, `organizer_event_editor_test.dart`) |
 | Ukuran layar teruji | 390x844, 768x1024, 1080x800, 1366x620, 1400x900 |
 | Pengujian perangkat fisik | Belum dilakukan |
 | Pengujian API/backend | Lulus 3 script verifikasi Supabase |
@@ -1018,6 +1042,9 @@ Rincian pengujian otomatis:
 | FV-01 | Favorit langsung hilang dan tetap hilang setelah pindah tab | 3 | Lulus | Selesai |
 | NV-01 | Rail tablet berlabel, notifikasi empty state, QR attendee | 3 | Lulus | Selesai |
 | AC-01 | AppIconButton semantics/tooltip/target 48 dan kontrol aksesibilitas | 16 | Lulus | Selesai |
+| WT-11 | Organizer event editor: form, validasi, edit, upload, GIF, hapus poster, 390x844 | 8 | Lulus | Selesai |
+| CT-04 | EventDraft, CRU event di API/mock, dan `EventProvider.saveEvent` | 7 | Lulus | Selesai |
+| IMG-01 | Validasi gambar event (magic bytes, GIF, ukuran, MIME) dan path URL Storage | 13 | Lulus | Selesai |
 
 Contoh potongan test yang dipakai:
 
@@ -1041,7 +1068,7 @@ for (final size in const [Size(390, 844), Size(768, 1024), Size(1400, 900)]) {
 }
 ```
 
-**Gambar 11.** Tangkapan layar output `flutter test` (168/168 lulus). Status: placeholder; screenshot terminal aktual menyusul.
+**Gambar 11.** Tangkapan layar output `flutter test` (259/259 lulus). Status: placeholder; screenshot terminal aktual menyusul.
 
 ### 9.3  Regression Findings and Fixes
 
@@ -1075,7 +1102,7 @@ Audit awal memberi skor **6.1/10**. Rubrik dan perubahan setelah remediasi P1:
 | Form & checkout | 5.0 | 8.0 | Validasi inline, autofill, banner, CTA sticky |
 | State data | 5.5 | 7.5 | Error/retry tiket & favorit, konfirmasi + undo |
 | Responsif | 6.0 | 7.5 | Sticky <1024, dua kolom ≥1024, smoke test 390–1400 |
-| **Total** | **6.1** | **7.8** | Penilaian mandiri berbasis 168 test; belum audit independen |
+| **Total** | **6.1** | **7.8** | Penilaian mandiri berbasis 259 test; belum audit independen |
 
 Temuan P1 dan perbaikannya:
 
@@ -1118,7 +1145,7 @@ Temuan P1 dan perbaikannya:
 - `flutter analyze` dipertahankan pada nol issue.
 - Konfigurasi Supabase dimuat lewat `--dart-define-from-file`; file kredensial lokal di-ignore.
 - Bottom bar detail event memakai `bottomNavigationBar` agar full width dan tidak menutupi konten.
-- Debug print `EVENTKUY_DEBUG` sudah dihapus; jumlah pengujian aktif menjadi 168.
+- Debug print `EVENTKUY_DEBUG` sudah dihapus; jumlah pengujian aktif menjadi 259.
 - Stok dan status habis dihitung di server (`event_stock`), bukan dari data lokal, sehingga konsisten antar perangkat.
 - Aturan voucher sekali pakai ditegakkan di database (PK `code, user_id`), bukan hanya di UI.
 - Favorit langsung hilang saat dilepas; "Hapus Semua" memakai konfirmasi + undo agar tetap aman.
@@ -1169,7 +1196,7 @@ menyiapkan kebijakan privasi dan aset store, lalu mengunggah ke Play Console.
 EventKuy sudah berjalan end-to-end di web dengan Supabase: autentikasi,
 event, favorit, tiket, PDF, dashboard organizer, dan check-in manual. Checkout
 dan voucher tervalidasi lewat RPC serta script backend; alur checkout langsung
-dari layar checkout belum diuji E2E. Kualitas layout dijaga oleh 168 test, tiga
+dari layar checkout belum diuji E2E. Kualitas layout dijaga oleh 259 test, tiga
 script verifikasi backend, dan verifikasi UI headless Chrome pada tiga ukuran
 layar.
 
@@ -1204,7 +1231,7 @@ Artefak yang tersedia saat ini:
 3. Tiga script verifikasi backend di `tool/`.
 4. Dokumen desain dan kebutuhan: `DESIGN_SPEC.md`.
 5. Laporan progress ini, `tasks/plan.md`, `tasks/todo.md`, dan `docs/P0_CHECKLIST.md`.
-6. Hasil `flutter analyze`, 168 test, dan build web release.
+6. Hasil `flutter analyze`, 259 test, dan build web release.
 
 Artefak yang masih harus dilengkapi: screenshot aplikasi di repositori, hasil
 build APK, bukti pengujian kamera/perangkat, dan integrasi pembayaran Midtrans.
@@ -1223,7 +1250,7 @@ build APK, bukti pengujian kamera/perangkat, dan integrasi pembayaran Midtrans.
 | Payment | Integrasi Midtrans dan bukti transaksi | Simulasi; Midtrans pending |
 | QR and check-in | QR, validasi kamera/server | QR/PDF/check-in server selesai; kamera pending |
 | Security | Uji otorisasi dan kepemilikan data | Selesai (RLS + RPC ownership) |
-| Testing | Test case dengan hasil aktual | 168/168 test + backend; device pending |
+| Testing | Test case dengan hasil aktual | 259/259 test + backend; device pending |
 | Release | APK build dan uji perangkat | Build web sukses; APK pending |
 | Documentation | Laporan progress, README, design spec | Tersedia |
 
@@ -1356,7 +1383,7 @@ Hasil yang diharapkan pada kondisi saat ini:
 
 ```text
 flutter analyze  -> No issues found
-flutter test     -> 168 tes lulus
+flutter test     -> 259 tes lulus
 verify-supabase  -> lulus
 verify-organizer -> lulus
 verify-e2e       -> lulus
@@ -1380,6 +1407,7 @@ Catatan: pengujian widget memakai font uji sehingga hasil visualnya tidak identi
 | F | Midtrans (checkout, webhook, status tiket) | Rencana | Pembayaran sandbox berfungsi |
 | G | Build AAB, signing, uji perangkat, Play Store | Rencana | Rilis Android |
 | H | P2 (tanpa dark mode): lokalisasi, reduced motion, token desain, organizer/rating nyata, buyer data, deep link, native share, notifikasi scaffold | Selesai (kode + uji otomatis); push live menunggu kredensial Firebase | Peningkatan kualitas produk |
+| I | CRU event organizer dari aplikasi: form nama/deskripsi/kategori/tanggal/jam/lokasi/harga/kuota + upload poster ke Supabase Storage | Selesai (kode + uji otomatis); upload live menunggu migrasi Storage dijalankan | Organizer tidak perlu Supabase Studio |
 
 Estimasi progres keseluruhan bersifat indikatif: backend dan alur utama sudah
 berjalan di web, sedangkan pembayaran riil, kamera, rilis Android, dark mode,

@@ -4,6 +4,7 @@ import '../models/app_notification.dart';
 import '../models/check_in_result.dart';
 import '../models/checkout_result.dart';
 import '../models/event.dart';
+import '../models/event_draft.dart';
 import '../models/ticket.dart';
 import '../models/transaction_record.dart';
 import '../models/voucher.dart';
@@ -60,6 +61,78 @@ class SupabaseApi implements EventKuyApi {
       }
       return Event.fromJson(json);
     }).toList(growable: false);
+  }
+
+  static const _eventSelect =
+      '*, organizers(name, bio, city, verified, avatar_url)';
+
+  @override
+  Future<Event> createEvent(EventDraft draft) async {
+    final organizerProfileId = await _ensureOrganizerProfile();
+    final row = await _client
+        .from('events')
+        .insert({
+          ...draft.toJson(),
+          'organizer_id': _userId,
+          'organizer_profile_id': organizerProfileId,
+        })
+        .select(_eventSelect)
+        .single();
+
+    return _eventFromRow(row);
+  }
+
+  @override
+  Future<Event> updateEvent(String eventId, EventDraft draft) async {
+    final row = await _client
+        .from('events')
+        .update(draft.toJson())
+        .eq('id', eventId)
+        .select(_eventSelect)
+        .single();
+
+    return _eventFromRow(row);
+  }
+
+  Event _eventFromRow(Map<String, dynamic> row) {
+    final json = Map<String, dynamic>.from(row);
+    final orgList = json['organizers'];
+    if (orgList is List && orgList.isNotEmpty) {
+      json['organizer'] = orgList.first;
+    }
+    return Event.fromJson(json);
+  }
+
+  /// Pastikan organizer punya baris `organizers` agar nama penyelenggara
+  /// tampil di halaman detail event. Kegagalan di sini tidak menghalangi
+  /// pembuatan event; `organizer_profile_id` boleh kosong.
+  Future<String?> _ensureOrganizerProfile() async {
+    try {
+      final existing = await _client
+          .from('organizers')
+          .select('id')
+          .eq('owner_id', _userId)
+          .limit(1)
+          .maybeSingle();
+      if (existing != null) return existing['id'] as String?;
+
+      final profile = await _client
+          .from('profiles')
+          .select('name')
+          .eq('id', _userId)
+          .maybeSingle();
+      final name = (profile?['name'] as String?)?.trim() ?? '';
+      if (name.isEmpty) return null;
+
+      final inserted = await _client
+          .from('organizers')
+          .insert({'owner_id': _userId, 'name': name})
+          .select('id')
+          .single();
+      return inserted['id'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

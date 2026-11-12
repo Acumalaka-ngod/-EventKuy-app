@@ -222,11 +222,25 @@ Status: belum dimulai.
 - [x] Test notifikasi lulus (5 test)
 - [x] Push live dinyatakan belum terverifikasi
 
-## Phase 7 — Final Verification
+## Phase 7 - Final Verification
 
 - [ ] Task 7: Dokumentasi + Definition of Done
   - Verify: `flutter analyze`, `flutter test`, `flutter build web --release --dart-define-from-file=supabase.local.json`
-- [ ] `flutter analyze` — bersih
-- [ ] `flutter test` — seluruh test lulus (213 test)
+- [ ] `flutter analyze` - bersih
+- [ ] `flutter test` - seluruh test lulus (259 test)
 - [ ] Web build sukses
 - [ ] Item belum terverifikasi live dicatat di LAPORAN_PROGRESS.md
+
+## Phase 8 - Organizer Event CRU
+
+- [x] Task 8: Form buat/edit event + upload poster
+  - Acceptance: organizer bisa mengubah nama, deskripsi, kategori, tanggal, jam, lokasi, harga, kuota, dan poster; poster diunggah ke Storage dan URL tersimpan di `events.image_url`
+  - Verify: `test/event_crud_test.dart`, `test/event_image_service_test.dart`, `test/organizer_event_editor_test.dart`, `flutter analyze`
+  - Files: `lib/models/event_draft.dart`, `lib/services/api_service.dart`, `lib/services/supabase_api.dart`, `lib/services/mock_api_service.dart`, `lib/services/image_validation.dart`, `lib/services/event_image_service.dart`, `lib/providers/event_provider.dart`, `lib/screens/organizer/organizer_event_editor_screen.dart`, `lib/screens/organizer/organizer_dashboard_screen.dart`, `supabase/organizer_events.sql`
+
+### Checkpoint 8
+- [x] Test CRU event + validasi gambar + editor lulus (28 test)
+- [x] Dashboard menampilkan semua event organizer dan tombol Buat Event Baru
+- [x] Form 390x844 tidak overflow
+- [ ] Migrasi `supabase/organizer_events.sql` dijalankan di Supabase Studio
+- [ ] Upload poster live diverifikasi di perangkat/browser dengan akun organizer

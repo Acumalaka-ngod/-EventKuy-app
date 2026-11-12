@@ -2,6 +2,7 @@ import '../models/app_notification.dart';
 import '../models/check_in_result.dart';
 import '../models/checkout_result.dart';
 import '../models/event.dart';
+import '../models/event_draft.dart';
 import '../models/ticket.dart';
 import '../models/transaction_record.dart';
 import '../models/voucher.dart';
@@ -10,6 +11,12 @@ import '../models/voucher.dart';
 /// Implementasi produksi: [SupabaseApi]. Implementasi test: [MockApiService].
 abstract class EventKuyApi {
   Future<List<Event>> fetchEvents();
+
+  /// Buat event baru milik organizer yang sedang login.
+  Future<Event> createEvent(EventDraft draft);
+
+  /// Ubah event milik organizer yang sedang login.
+  Future<Event> updateEvent(String eventId, EventDraft draft);
 
   Future<List<Ticket>> fetchTickets();
 

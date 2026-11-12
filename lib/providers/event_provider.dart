@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/errors.dart';
 import '../models/event.dart';
+import '../models/event_draft.dart';
 import '../services/api_service.dart';
 import '../services/supabase_api.dart';
 
@@ -86,6 +87,36 @@ class EventProvider extends ChangeNotifier {
         unawaited(loadEvents(force: true));
       }
     }
+  }
+
+  /// Simpan event baru atau perubahan event yang sudah ada.
+  ///
+  /// Daftar lokal langsung diperbarui supaya dashboard dan halaman detail
+  /// tidak perlu menunggu fetch ulang. Pemanggil tetap boleh memanggil
+  /// [loadEvents] dengan `force: true` untuk rekonsiliasi.
+  Future<Event> saveEvent({
+    String? eventId,
+    required EventDraft draft,
+  }) async {
+    final saved = eventId == null
+        ? await _api.createEvent(draft)
+        : await _api.updateEvent(eventId, draft);
+
+    final index = _events.indexWhere((event) => event.id == saved.id);
+    if (index == -1) {
+      _events = [..._events, saved]
+        ..sort((a, b) => a.date.compareTo(b.date));
+    } else {
+      final updated = [..._events];
+      // `sold` dihitung backend lewat view event_stock; pertahankan nilai
+      // yang sudah ditampilkan agar tidak berkedip menjadi 0.
+      updated[index] = saved.copyWith(sold: _events[index].sold);
+      _events = updated..sort((a, b) => a.date.compareTo(b.date));
+    }
+
+    _error = null;
+    notifyListeners();
+    return saved;
   }
 
   /// Kurangi sisa stok secara optimistis tepat setelah checkout berhasil.

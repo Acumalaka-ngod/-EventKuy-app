@@ -488,6 +488,32 @@ Ruang lingkup: P2 tanpa dark mode. Firebase/push live ditunda.
   - Files: `DESIGN_SPEC.md`, `LAPORAN_PROGRESS.md`, `tasks/plan.md`, `tasks/todo.md`.
   - Estimated scope: Small.
 
+### Phase 8: Organizer Event CRU
+
+- [ ] Task 8: Form buat/edit event + upload poster
+  - Acceptance: organizer dapat membuat dan mengubah nama, deskripsi,
+    kategori, tanggal, jam mulai/selesai, lokasi, harga, kuota, dan poster;
+    poster diunggah ke Supabase Storage `event-images` dan public URL-nya
+    disimpan ke `events.image_url`; GIF dan file > 5 MB ditolak; dashboard
+    menampilkan seluruh event milik organizer.
+  - Verify: `flutter test test/event_crud_test.dart test/event_image_service_test.dart test/organizer_event_editor_test.dart`,
+    `flutter test test/ui_smoke_test.dart --plain-name "OrganizerDashboard"`,
+    `flutter analyze`.
+  - Files: `lib/models/event_draft.dart`, `lib/services/image_validation.dart`,
+    `lib/services/event_image_service.dart`, `lib/services/api_service.dart`,
+    `lib/services/supabase_api.dart`, `lib/services/mock_api_service.dart`,
+    `lib/providers/event_provider.dart`,
+    `lib/screens/organizer/organizer_event_editor_screen.dart`,
+    `lib/screens/organizer/organizer_dashboard_screen.dart`,
+    `supabase/organizer_events.sql`, `assets/images/events/README.md`.
+  - Estimated scope: Large.
+
+### Checkpoint: Organizer Event CRU
+- [ ] Test CRU event, validasi gambar, dan editor lulus
+- [ ] Form 390x844 bebas overflow
+- [ ] Migrasi `supabase/organizer_events.sql` dijalankan manual
+- [ ] Upload poster live diverifikasi dengan akun organizer
+
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config.dart';
+import 'image_validation.dart';
 
 /// Error upload avatar dengan pesan yang aman ditampilkan ke pengguna.
 class AvatarUploadException implements Exception {
@@ -36,22 +37,6 @@ class AvatarService {
   static const String formatErrorMessage =
       'Format foto harus JPG, PNG, atau WebP.';
 
-  static const _pngFormat = _ImageFormat(
-    extension: 'png',
-    contentType: 'image/png',
-    extensions: {'png'},
-  );
-  static const _jpegFormat = _ImageFormat(
-    extension: 'jpg',
-    contentType: 'image/jpeg',
-    extensions: {'jpg', 'jpeg'},
-  );
-  static const _webpFormat = _ImageFormat(
-    extension: 'webp',
-    contentType: 'image/webp',
-    extensions: {'webp'},
-  );
-
   SupabaseClient get _supabase {
     if (_client != null) return _client;
     if (!AppConfig.hasSupabaseConfig) {
@@ -70,38 +55,23 @@ class AvatarService {
     String? extension,
     String? contentType,
   }) {
-    if (bytes.isEmpty) {
-      throw const AvatarUploadException('File foto kosong.');
+    try {
+      final image = validateUploadImage(
+        bytes: bytes,
+        extension: extension,
+        contentType: contentType,
+        maxBytes: maxBytes,
+        formatMessage: formatErrorMessage,
+        emptyMessage: 'File foto kosong.',
+        sizeMessage: 'Ukuran foto maksimal 5 MB.',
+      );
+      return AvatarImage(
+        extension: image.extension,
+        contentType: image.contentType,
+      );
+    } on UploadImageException catch (error) {
+      throw AvatarUploadException(error.message);
     }
-    if (bytes.length > maxBytes) {
-      throw const AvatarUploadException('Ukuran foto maksimal 5 MB.');
-    }
-
-    final detected = _detectFormat(bytes);
-    if (detected == null) {
-      throw const AvatarUploadException(formatErrorMessage);
-    }
-
-    final requestedExtension = _normalizeExtension(extension);
-    if (requestedExtension.isNotEmpty &&
-        !detected.extensions.contains(requestedExtension)) {
-      throw const AvatarUploadException(formatErrorMessage);
-    }
-
-    final mime = (contentType ?? '')
-        .trim()
-        .toLowerCase()
-        .split(';')
-        .first
-        .trim();
-    if (mime.isNotEmpty && mime != detected.contentType) {
-      throw const AvatarUploadException(formatErrorMessage);
-    }
-
-    return AvatarImage(
-      extension: detected.extension,
-      contentType: detected.contentType,
-    );
   }
 
   Future<String> uploadAvatar({
@@ -149,56 +119,6 @@ class AvatarService {
     return storage.getPublicUrl(path);
   }
 
-  static _ImageFormat? _detectFormat(Uint8List bytes) {
-    if (_startsWith(bytes, const [
-      0x89,
-      0x50,
-      0x4E,
-      0x47,
-      0x0D,
-      0x0A,
-      0x1A,
-      0x0A,
-    ])) {
-      return _pngFormat;
-    }
-    if (bytes.length >= 3 &&
-        bytes[0] == 0xFF &&
-        bytes[1] == 0xD8 &&
-        bytes[2] == 0xFF) {
-      return _jpegFormat;
-    }
-    if (bytes.length >= 12 &&
-        _matchesAscii(bytes, 0, 'RIFF') &&
-        _matchesAscii(bytes, 8, 'WEBP')) {
-      return _webpFormat;
-    }
-    return null;
-  }
-
-  static bool _startsWith(Uint8List bytes, List<int> prefix) {
-    if (bytes.length < prefix.length) return false;
-    for (var i = 0; i < prefix.length; i++) {
-      if (bytes[i] != prefix[i]) return false;
-    }
-    return true;
-  }
-
-  static bool _matchesAscii(Uint8List bytes, int offset, String ascii) {
-    if (bytes.length < offset + ascii.length) return false;
-    for (var i = 0; i < ascii.length; i++) {
-      if (bytes[offset + i] != ascii.codeUnitAt(i)) return false;
-    }
-    return true;
-  }
-
-  static String _normalizeExtension(String? extension) {
-    return (extension ?? '').trim().toLowerCase().replaceFirst(
-      RegExp(r'^\.+'),
-      '',
-    );
-  }
-
   String _friendlyStorageMessage(StorageException error) {
     final message = error.message.toLowerCase();
     if (message.contains('bucket not found') || error.statusCode == '404') {
@@ -209,16 +129,4 @@ class AvatarService {
     }
     return 'Gagal mengunggah foto. Coba lagi.';
   }
-}
-
-class _ImageFormat {
-  const _ImageFormat({
-    required this.extension,
-    required this.contentType,
-    required this.extensions,
-  });
-
-  final String extension;
-  final String contentType;
-  final Set<String> extensions;
 }
