@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -35,9 +36,10 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeIn));
 
     _boot();
   }
@@ -68,7 +70,9 @@ class _SplashScreenState extends State<SplashScreen>
     await auth.tryAutoLogin();
     if (!mounted) return;
 
-    if (auth.isLoggedIn) {
+    // Organizer tidak memakai tiket/favorit pembeli; dashboard memuat
+    // datanya sendiri setelah layar terbuka.
+    if (auth.isLoggedIn && auth.user?.isOrganizer != true) {
       await Future.wait([
         context.read<TicketProvider>().load().catchError((_) {}),
         context.read<FavoriteProvider>().load().catchError((_) {}),
@@ -95,9 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: AppTheme.splashGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.splashGradient),
         child: Stack(
           children: [
             // Lingkaran dekoratif

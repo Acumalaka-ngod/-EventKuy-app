@@ -10,11 +10,7 @@ import 'package:eventkuy/providers/ticket_provider.dart';
 import 'package:eventkuy/screens/profile/profile_screen.dart';
 import 'package:eventkuy/services/mock_api_service.dart';
 
-const _user = AppUser(
-  id: 'u1',
-  name: 'Siti Rahma',
-  email: 'siti@example.com',
-);
+const _user = AppUser(id: 'u1', name: 'Siti Rahma', email: 'siti@example.com');
 
 const _organizer = AppUser(
   id: 'u2',
@@ -34,10 +30,7 @@ Widget _app({
       ChangeNotifierProvider<TicketProvider>.value(value: tickets),
       ChangeNotifierProvider<FavoriteProvider>.value(value: favorites),
     ],
-    child: MaterialApp(
-      theme: AppTheme.light(),
-      home: const ProfileScreen(),
-    ),
+    child: MaterialApp(theme: AppTheme.light(), home: const ProfileScreen()),
   );
 }
 
@@ -141,7 +134,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('badge organizer dan menu organizer tampil untuk role organizer', (
+  testWidgets('organizer hanya melihat menu yang relevan dengan perannya', (
     tester,
   ) async {
     _tallSurface(tester);
@@ -158,9 +151,23 @@ void main() {
 
     expect(find.text('Organizer EventKuy'), findsOneWidget);
     expect(find.text('Member EventKuy'), findsNothing);
-    expect(find.text('MODE ORGANIZER'), findsOneWidget);
-    expect(find.text('Dashboard Organizer'), findsOneWidget);
-    expect(find.text('Scan QR Check-in'), findsOneWidget);
+
+    // Fitur pembeli tidak boleh muncul di profil organizer.
+    expect(find.text('Tiket Saya'), findsNothing);
+    expect(find.text('Favorit'), findsNothing);
+    expect(find.text('Check-in'), findsNothing);
+    expect(find.text('Riwayat Transaksi'), findsNothing);
+
+    // Shortcut lama digantikan navbar organizer.
+    expect(find.text('MODE ORGANIZER'), findsNothing);
+    expect(find.text('Dashboard Organizer'), findsNothing);
+    expect(find.text('Scan QR Check-in'), findsNothing);
+
+    // Menu yang tetap relevan.
+    expect(find.text('AKUN'), findsOneWidget);
+    expect(find.text('Edit Informasi Profil'), findsOneWidget);
+    expect(find.text('Pusat Bantuan & FAQ'), findsOneWidget);
+    expect(find.text('Keluar dari Akun'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

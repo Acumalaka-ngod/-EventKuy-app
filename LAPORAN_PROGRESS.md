@@ -169,7 +169,7 @@ Kebutuhan fungsional diberi ID agar dapat ditelusuri ke layar, endpoint, dan tes
 | Peran | Fitur Utama | Akses | Status |
 |---|---|---|---|
 | Pengguna (pengunjung event) | Beranda, jelajahi, favorit, detail, checkout, tiket, profil | 5 tab utama | Selesai (Supabase) |
-| Pengguna sebagai panitia/organizer | Dashboard organizer, statistik event, scan QR check-in | Menu di layar Profil | Selesai; kamera pending |
+| Pengguna sebagai panitia/organizer | Dashboard organizer sebagai Beranda, statistik event, scan QR check-in dari navbar | Navbar organizer (Beranda · Scan QR · Profil) | Selesai (kode + uji otomatis); kamera live pending |
 | Administrator backend | Mengelola event, tiket, dan transaksi | Supabase Studio | Selesai (Supabase Studio) |
 
 Otorisasi diterapkan di server melalui Supabase Row Level Security: pengguna
@@ -209,7 +209,7 @@ Arsitektur saat ini (Supabase):
 ```text
 Splash / Auth screens
         |
-MainNavigation (5 tab)
+MainNavigation (role-aware: 5 tab pembeli / 3 slot organizer)
         |
 Screens  ->  Providers (ChangeNotifier)  ->  SupabaseApi
         |            |                          |
@@ -234,7 +234,7 @@ Aktor dan use case utama:
 | Aktor | Use Case |
 |---|---|
 | Pengguna | Registrasi, login, logout, melihat beranda, mencari event, memfilter kategori, melihat detail, menyimpan favorit, checkout, memakai voucher, memilih pembayaran, melihat e-ticket, check-in tiket, mengubah profil (rencana) |
-| Panitia/Organizer | Membuka dashboard organizer, melihat statistik event, membuka detail event, scan QR check-in |
+| Panitia/Organizer | Masuk langsung ke dashboard organizer, melihat statistik event, membuat/mengedit event, scan QR check-in dari navbar |
 | Administrator (Supabase Studio) | Mengelola master event, tiket, dan transaksi melalui Supabase Studio |
 
 Prasyarat: use case pembelian dan tiket memerlukan status login melalui Supabase Auth. Use case check-in memerlukan tiket berstatus `paid` dan akun organizer pemilik event.
@@ -247,13 +247,17 @@ Prasyarat: use case pembelian dan tiket memerlukan status login melalui Supabase
 Splash
  └─ auto-login? -> Beranda / Login
 Login <-> Register
-MainNavigation (5 tab)
- ├─ 0 Beranda  -> Detail Event -> Checkout -> Dialog Sukses -> Tiket Saya
- ├─ 1 Jelajahi -> Detail Event
- ├─ 2 Tiket Saya
- ├─ 3 Favorit  -> Detail Event
- └─ 4 Profil   -> Dashboard Organizer -> Scan QR
-                -> Konfirmasi Logout
+MainNavigation (role-aware)
+ ├─ Pembeli (5 tab)
+ │   ├─ 0 Beranda  -> Detail Event -> Checkout -> Dialog Sukses -> Tiket Saya
+ │   ├─ 1 Jelajahi -> Detail Event
+ │   ├─ 2 Tiket Saya
+ │   ├─ 3 Favorit  -> Detail Event
+ │   └─ 4 Profil   -> Konfirmasi Logout
+ └─ Organizer (3 slot)
+     ├─ 0 Beranda  -> Dashboard Organizer -> Editor Event
+     ├─ [Scan QR]  -> Scan Screen
+     └─ 1 Profil   -> Konfirmasi Logout
 Bottom sheet: Pilih Kota
 ```
 
@@ -718,13 +722,19 @@ Tema didefinisikan di `lib/core/theme.dart` dengan `ThemeData` Material 3, font 
 
 ### 6.2  Main Navigation
 
-`MainNavigation` mengelola 5 tab: Beranda, Jelajahi, Tiket, Favorit, dan Profil. Isi tab disimpan dengan `IndexedStack` agar state tidak hilang saat berpindah tab. Navigasi berubah otomatis:
+`MainNavigation` sekarang **role-aware** berdasarkan `AppUser.isOrganizer`:
 
-- Mobile: bottom bar mengambang dengan ikon, label, dan pill aktif.
-- Tablet: rail **96 px** dengan ikon + **label teks** (bukan hanya tooltip); setiap item 72×64.
-- Desktop: sidebar 240 px dengan logo, label menu, dan footer versi.
+- **Pembeli** mendapat 5 tab: Beranda, Jelajahi, Tiket, Favorit, dan Profil.
+- **Organizer** mendapat 3 slot: Beranda (Dashboard Organizer), aksi **Scan QR** besar di tengah, dan Profil. Tab pembeli tidak dirender.
+- Isi tab disimpan dengan `IndexedStack` agar state tidak hilang saat berpindah tab.
 
-Badge coral menampilkan jumlah tiket dan favorit (maksimum "9+") hanya bila ada data nyata.
+Navigasi berubah otomatis:
+
+- Mobile: bottom bar penuh selebar layar dengan ikon, label, dan pill aktif. Bar organizer setinggi 84 px dengan tombol QR 54×54 vermilion berlabel "Scan QR" di tengah (target sentuh 104×84).
+- Tablet: rail **96 px** dengan ikon + **label teks** (bukan hanya tooltip); setiap item 72×64. Organizer mendapat aksi QR 48×48 di antara Beranda dan Profil.
+- Desktop: sidebar 240 px dengan logo, label menu, dan footer versi. Organizer mendapat tombol **Scan QR** penuh selebar sidebar.
+
+Badge coral menampilkan jumlah tiket dan favorit (maksimum "9+") hanya untuk pembeli bila ada data nyata. Deep link event untuk organizer dikonsumsi tanpa membuka Detail Event, dan splash/login tidak memuat data tiket/favorit organizer.
 
 ### 6.3  Splash Screen
 
@@ -789,9 +799,11 @@ Melepas favorit adalah aksi langsung: kartu **langsung hilang** dari layar Favor
 
 ### 6.10  Profil
 
-Konten: kartu profil bergradien (avatar inisial/foto, nama, email, badge "Member Prioritas EventKuy"), tiga kartu statistik (Tiket Saya, Favorit, Poin), grup "Akun & Aktivitas" (Edit Informasi Profil, Riwayat Transaksi), grup "Mode Organizer" (Dashboard Organizer, Scan QR Check-in), grup "Bantuan" (Pusat Bantuan & FAQ), serta tombol "Keluar dari Akun" dengan dialog konfirmasi. Ikon pengaturan membuka layar pengaturan berisi Edit Profil, Ubah Password, dan Pusat Bantuan.
+Konten pembeli: kartu profil bergradien (avatar inisial/foto, nama, email, badge "Member EventKuy"), tiga kartu statistik (Tiket Saya, Favorit, Check-in), grup "Akun & Aktivitas" (Edit Informasi Profil, Riwayat Transaksi), grup "Bantuan" (Pusat Bantuan & FAQ), serta tombol "Keluar dari Akun" dengan dialog konfirmasi. Ikon pengaturan membuka layar pengaturan berisi Edit Profil, Ubah Password, dan Pusat Bantuan.
 
-Menu Edit Informasi Profil, Riwayat Transaksi, Dashboard Organizer, Scan QR Check-in, Pusat Bantuan, dan Ubah Password sudah berfungsi. Metode Pembayaran Tersimpan, Hubungi CS, dan Hapus Akun sengaja di luar cakupan P1. Avatar menerima JPG/JPEG/PNG/WebP (GIF dan non-gambar ditolak) dengan batas 5 MB di bucket Supabase.
+Konten organizer: badge "Organizer EventKuy", **tanpa** statistik pembeli, Riwayat Transaksi, atau grup "Mode Organizer" karena Dashboard dan Scan QR sudah ada di navbar. Grup "Akun" hanya berisi Edit Informasi Profil, lalu Bantuan dan tombol Keluar. Dialog logout memakai teks pengelolaan event, bukan tiket/event tersimpan.
+
+Menu Edit Informasi Profil, Riwayat Transaksi (pembeli), Pusat Bantuan, dan Ubah Password sudah berfungsi. Metode Pembayaran Tersimpan, Hubungi CS, dan Hapus Akun sengaja di luar cakupan P1. Avatar menerima JPG/JPEG/PNG/WebP (GIF dan non-gambar ditolak) dengan batas 5 MB di bucket Supabase.
 
 ### 6.11  Reusable Components
 
@@ -1012,8 +1024,8 @@ pwsh -File tool/verify-e2e.ps1
 |---|---|
 | Tanggal eksekusi | 12 November 2026 |
 | `flutter analyze` | No issues found (0 issue) |
-| `flutter test` | 259 lulus, 0 gagal |
-| Jumlah file test | 39 file (termasuk `auth_form_test.dart`, `data_state_test.dart`, `navigation_notifications_test.dart`, `checkout_form_test.dart`, `search_sync_test.dart`, `home_states_test.dart`, `accessibility_controls_test.dart`, `avatar_service_test.dart`, `event_crud_test.dart`, `event_image_service_test.dart`, `organizer_event_editor_test.dart`) |
+| `flutter test` | 266 lulus, 0 gagal |
+| Jumlah file test | 40 file (termasuk `auth_form_test.dart`, `data_state_test.dart`, `navigation_notifications_test.dart`, `organizer_navigation_test.dart`, `checkout_form_test.dart`, `search_sync_test.dart`, `home_states_test.dart`, `accessibility_controls_test.dart`, `avatar_service_test.dart`, `event_crud_test.dart`, `event_image_service_test.dart`, `organizer_event_editor_test.dart`) |
 | Ukuran layar teruji | 390x844, 768x1024, 1080x800, 1366x620, 1400x900 |
 | Pengujian perangkat fisik | Belum dilakukan |
 | Pengujian API/backend | Lulus 3 script verifikasi Supabase |
@@ -1041,6 +1053,7 @@ Rincian pengujian otomatis:
 | DS-01 | Error/retry tiket & favorit, toggle rollback, clear/restore favorit | 8 | Lulus | Selesai |
 | FV-01 | Favorit langsung hilang dan tetap hilang setelah pindah tab | 3 | Lulus | Selesai |
 | NV-01 | Rail tablet berlabel, notifikasi empty state, QR attendee | 3 | Lulus | Selesai |
+| NV-02 | Navigasi role-aware organizer: mobile/tablet/desktop, Scan QR tengah, profil, deep link | 7 | Lulus | Selesai |
 | AC-01 | AppIconButton semantics/tooltip/target 48 dan kontrol aksesibilitas | 16 | Lulus | Selesai |
 | WT-11 | Organizer event editor: form, validasi, edit, upload, GIF, hapus poster, 390x844 | 8 | Lulus | Selesai |
 | CT-04 | EventDraft, CRU event di API/mock, dan `EventProvider.saveEvent` | 7 | Lulus | Selesai |
@@ -1408,6 +1421,7 @@ Catatan: pengujian widget memakai font uji sehingga hasil visualnya tidak identi
 | G | Build AAB, signing, uji perangkat, Play Store | Rencana | Rilis Android |
 | H | P2 (tanpa dark mode): lokalisasi, reduced motion, token desain, organizer/rating nyata, buyer data, deep link, native share, notifikasi scaffold | Selesai (kode + uji otomatis); push live menunggu kredensial Firebase | Peningkatan kualitas produk |
 | I | CRU event organizer dari aplikasi: form nama/deskripsi/kategori/tanggal/jam/lokasi/harga/kuota + upload poster ke Supabase Storage | Selesai (kode + uji otomatis); upload live menunggu migrasi Storage dijalankan | Organizer tidak perlu Supabase Studio |
+| J | Navigasi role-aware: dashboard sebagai Beranda organizer, Scan QR besar di tengah navbar, tab pembeli disembunyikan, deep link event diabaikan | Selesai (kode + 266 test lulus, build web sukses) | Pengalaman organizer terpisah dari pembeli |
 
 Estimasi progres keseluruhan bersifat indikatif: backend dan alur utama sudah
 berjalan di web, sedangkan pembayaran riil, kamera, rilis Android, dark mode,

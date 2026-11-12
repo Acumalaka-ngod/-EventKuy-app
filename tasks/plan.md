@@ -514,6 +514,31 @@ Ruang lingkup: P2 tanpa dark mode. Firebase/push live ditunda.
 - [ ] Migrasi `supabase/organizer_events.sql` dijalankan manual
 - [ ] Upload poster live diverifikasi dengan akun organizer
 
+### Phase 9: Navigasi Role-Aware Organizer
+
+- [ ] Task 9: Pisahkan pengalaman organizer dari pembeli
+  - Acceptance: organizer langsung masuk Dashboard Organizer sebagai Beranda;
+    navbar mobile berisi Beranda, Scan QR besar di tengah, dan Profil; rail
+    tablet dan sidebar desktop memakai aksi Scan QR menonjol; tab pembeli tidak
+    dirender; deep link event dikonsumsi tanpa membuka detail; profil organizer
+    tidak menampilkan statistik pembeli, Riwayat Transaksi, atau Mode Organizer;
+    splash/login tidak memuat tiket/favorit organizer.
+  - Verify: `flutter test test/organizer_navigation_test.dart test/profile_screen_test.dart`,
+    `flutter test`, `flutter analyze`, web release build.
+  - Files: `lib/screens/main_navigation.dart`,
+    `lib/screens/profile/profile_screen.dart`,
+    `lib/screens/organizer/organizer_dashboard_screen.dart`,
+    `lib/screens/splash/splash_screen.dart`,
+    `lib/screens/auth/login_screen.dart`,
+    `test/organizer_navigation_test.dart`, `test/profile_screen_test.dart`.
+  - Estimated scope: Medium.
+
+### Checkpoint: Navigasi Role-Aware Organizer
+- [ ] Test navigasi organizer mobile/tablet/desktop lulus
+- [ ] Profil organizer bebas fitur pembeli
+- [ ] Deep link event tidak membuka detail untuk organizer
+- [ ] `flutter analyze`, seluruh test, dan web build lulus
+
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |

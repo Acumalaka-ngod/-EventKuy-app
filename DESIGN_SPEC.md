@@ -9,10 +9,11 @@
 Dokumen ini adalah **acuan fungsi, menu, konten, alur, dan kebutuhan teknis** aplikasi EventKuy.
 
 - **Bebas diubah oleh desainer (redesign total):** warna, tipografi, bentuk komponen, ilustrasi, ikonografi, gaya visual secara keseluruhan.
-- **Wajib dipertahankan:** struktur 5 tab navigasi, 13 tampilan beserta alur antarlayar, semua *state* (loading, kosong, sukses, gagal), konten minimum per layar, dan persyaratan responsif (Bagian 7).
+- **Wajib dipertahankan:** struktur navigasi role-aware (5 tab pembeli; organizer: Beranda dashboard, aksi Scan QR di tengah, Profil), 13 tampilan beserta alur antarlayar, semua *state* (loading, kosong, sukses, gagal), konten minimum per layar, dan persyaratan responsif (Bagian 7).
 - **Status implementasi P1:** validasi form auth inline, autofill, banner error server, target sentuh 48 px, rail tablet berlabel, state error/retry tiket & favorit, konfirmasi + undo Hapus Semua Favorit, dan checkout sticky sudah diterapkan.
 - **Status implementasi P2 (tanpa dark mode):** lokalisasi `id_ID` + helper format terpusat, reduced motion, normalisasi token desain, organizer + rating nyata di Detail Event, persistensi data pembeli (nama/email/WhatsApp) di transaksi, deep link `eventkuy://event/<id>` dan web `/#/event/<id>`, native share sheet + fallback clipboard, dan scaffold notifikasi (token table + feed in-app; push live ditunda menunggu kredensial Firebase). Dark mode tidak dikerjakan.
 - **Status implementasi organizer event CRU:** Dashboard Organizer menampilkan semua event milik akun yang login, tombol **Buat Event Baru**, dan kartu event yang bisa diketuk untuk mengedit. Form editor mengelola nama, deskripsi, kategori, tanggal, jam mulai/selesai, lokasi, harga, kuota, dan poster. Poster diambil dari galeri/kamera lalu diunggah ke Supabase Storage `event-images`; `events.image_url` diperbarui otomatis. Format JPG/PNG/WebP maksimal 5 MB, GIF ditolak. Hapus event belum termasuk lingkup.
+- **Status implementasi navigasi role-aware:** akun organizer langsung masuk ke **Dashboard Organizer** sebagai Beranda. Navbar mobile organizer hanya **Beranda · Scan QR (tombol QR besar di tengah) · Profil**; rail tablet dan sidebar desktop memakai aksi Scan QR yang menonjol. Tab pembeli (Jelajahi, Tiket, Favorit) tidak dirender untuk organizer, dan deep link event dikonsumsi tanpa membuka halaman detail. Profil organizer tidak menampilkan statistik pembeli, Riwayat Transaksi, atau grup Mode Organizer.
 - Lampiran di Bagian 11 berisi token visual versi lama — **opsional**, hanya referensi bila ingin mempertahankan sesuatu.
 
 ---
@@ -37,12 +38,17 @@ Dokumen ini adalah **acuan fungsi, menu, konten, alur, dan kebutuhan teknis** ap
 Splash
  └─ auto-login? → Beranda / Login
 Login ⇄ Register
-MainNavigation (5 tab):
- ├─ 0 Beranda ─→ Detail Event ─→ Checkout ─→ [Dialog Sukses] ─→ Tiket Saya
- ├─ 1 Jelajahi ─→ Detail Event
- ├─ 2 Tiket Saya
- ├─ 3 Favorit ─→ Detail Event
- └─ 4 Profil
+MainNavigation (role-aware):
+ ├─ Pembeli (5 tab):
+ │   ├─ 0 Beranda ─→ Detail Event ─→ Checkout ─→ [Dialog Sukses] ─→ Tiket Saya
+ │   ├─ 1 Jelajahi ─→ Detail Event
+ │   ├─ 2 Tiket Saya
+ │   ├─ 3 Favorit ─→ Detail Event
+ │   └─ 4 Profil
+ └─ Organizer (3 slot):
+     ├─ 0 Beranda ─→ Dashboard Organizer ─→ Editor Event
+     ├─ [Scan QR] ─→ Scan Screen (aksi tengah, bukan tab)
+     └─ 1 Profil
 Bottom sheet: Pilih Kota · Konfirmasi Keluar
 ```
 
@@ -132,9 +138,11 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 ---
 
-### 3.4 Shell Navigasi (pembungkus 5 tab)
+### 3.4 Shell Navigasi (role-aware)
 
-**Tujuan:** kerangka utama setelah login; menampilkan 5 menu:
+**Tujuan:** kerangka utama setelah login. Menu ditentukan oleh `AppUser.isOrganizer` (`role` = `organizer`/`admin`).
+
+**Akun pembeli — 5 tab:**
 
 | Tab | Label | Ikon | Badge |
 |---|---|---|---|
@@ -144,12 +152,25 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 | 3 | Favorit | hati | jumlah favorit |
 | 4 | Profil | orang | — |
 
-**Perilaku responsif (wajib):**
-- **HP (<720px):** bottom navigation bar floating, ikon + label, item aktif diberi highlight pill
-- **Tablet (720–1100px):** navigation rail vertikal kiri selebar **96px**, setiap item menampilkan ikon + label teks (bukan hanya tooltip), target sentuh 72×64
-- **Desktop (>1100px):** sidebar penuh (lebar 240px) berisi logo + nama app "EVENTKUY", 5 item menu berlabel + badge angka, footer teks versi "EventKuy v1.0.0 • Temukan. Ikuti. Hadiri."
+**Akun organizer — 3 slot:**
 
-**Badge:** bulatan merah dengan angka (maks "9+") di atas ikon. Badge hanya tampil bila ada data nyata; tidak ada badge palsu.
+| Slot | Label | Ikon | Perilaku |
+|---|---|---|---|
+| 0 | Beranda | home | Menampilkan `OrganizerDashboardScreen` |
+| Tengah | Scan QR | QR besar | Aksi, membuka `ScanScreen` sebagai layar penuh |
+| 1 | Profil | orang | Profil organizer tanpa fitur pembeli |
+
+**Perilaku responsif (wajib):**
+- **HP (<720px):** bottom navigation bar penuh selebar layar. Organizer memakai tinggi bar 84px; tombol Scan QR berupa kotak QR 54×54 berwarna vermilion dengan label "Scan QR" di tengah, target sentuh 104×84, diapit Beranda dan Profil.
+- **Tablet (720–1100px):** navigation rail vertikal kiri selebar **96px**, setiap item menampilkan ikon + label teks (bukan hanya tooltip), target sentuh minimal 72×64. Organizer mendapat aksi QR 48×48 yang menonjol di antara Beranda dan Profil.
+- **Desktop (>1100px):** sidebar penuh (lebar 240px) berisi logo + nama app "EVENTKUY", item menu berlabel + badge angka, footer teks versi "EventKuy v1.0.0 • Temukan. Ikuti. Hadiri." Organizer mendapat tombol **Scan QR** penuh selebar sidebar.
+
+**Badge:** bulatan merah dengan angka (maks "9+") di atas ikon. Badge hanya tampil untuk pembeli bila ada data nyata; tidak ada badge palsu.
+
+**Aturan peran:**
+- Organizer tidak merender Beranda, Jelajahi, Tiket, atau Favorit pembeli.
+- Deep link event (`eventkuy://event/<id>` / `/#/event/<id>`) dikonsumsi tetapi tidak membuka Detail Event untuk organizer.
+- Splash dan login tidak memuat tiket/favorit untuk organizer.
 
 ---
 
@@ -226,19 +247,25 @@ Bottom sheet: Pilih Kota · Konfirmasi Keluar
 
 ---
 
-### 3.9 Profil (tab 4)
+### 3.9 Profil (tab 4 pembeli / tab 1 organizer)
 
-**Konten wajib:**
+**Konten wajib (pembeli):**
 - Judul "Profil Saya" + ikon pengaturan (kanan atas)
-- **Kartu profil:** avatar inisial besar (dengan tombol ganti foto overlay), nama, email, badge **"Member Prioritas EventKuy"** (ikon mahkota/medali)
-- **3 kartu statistik:** Tiket Saya (jumlah) · Favorit (jumlah) · Poin Reward (contoh: 1.250) — masing-masing dengan ikon berwarna
-- **Grup "Akun & Aktivitas":** Edit Informasi Profil · Riwayat Pesanan & Transaksi · Metode Pembayaran Tersimpan
-- **Grup "Bantuan & Pusat Informasi":** Pusat Bantuan & FAQ · Hubungi Customer Care · Ketentuan Layanan & Privasi
+- **Kartu profil:** avatar inisial/foto (dengan tombol ganti foto overlay), nama, email, badge **"Member EventKuy"**
+- **3 kartu statistik:** Tiket Saya · Favorit · Check-in — masing-masing dengan ikon berwarna
+- **Grup "Akun & Aktivitas":** Edit Informasi Profil · Riwayat Transaksi
+- **Grup "Bantuan":** Pusat Bantuan & FAQ
 - **Tombol "Keluar dari Akun"** (gaya bahaya lembut) → bottom sheet konfirmasi
 
-**Interaksi:** item menu belum berfungsi (bisa tampil snackbar "segera hadir"); logout → konfirmasi dulu.
+**Konten organizer:**
+- Kartu profil dengan badge **"Organizer EventKuy"**
+- **Tanpa** kartu statistik pembeli, Riwayat Transaksi, atau grup "Mode Organizer" — Dashboard dan Scan QR sudah menjadi bagian navbar
+- Grup **"Akun"** berisi Edit Informasi Profil, lalu grup Bantuan dan tombol Keluar
+- Teks konfirmasi logout menyebut pengelolaan event, bukan tiket/event tersimpan
 
-**Catatan platform:** konten dibatasi lebar 760px & di tengah pada layar besar.
+**Interaksi:** logout → konfirmasi dulu. Avatar menerima JPG/JPEG/PNG/WebP maksimal 5 MB; GIF dan non-gambar ditolak.
+
+**Catatan platform:** konten dibatasi lebar 860px & di tengah pada layar besar.
 
 ---
 

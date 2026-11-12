@@ -244,3 +244,16 @@ Status: belum dimulai.
 - [x] Form 390x844 tidak overflow
 - [ ] Migrasi `supabase/organizer_events.sql` dijalankan di Supabase Studio
 - [ ] Upload poster live diverifikasi di perangkat/browser dengan akun organizer
+
+## Phase 9 - Navigasi Role-Aware Organizer
+
+- [x] Task 9: Dashboard sebagai Beranda organizer + Scan QR besar di tengah navbar
+  - Acceptance: organizer hanya melihat Beranda (dashboard), Scan QR, dan Profil; tab pembeli tidak dirender; rail tablet dan sidebar desktop memakai aksi Scan QR menonjol; deep link event diabaikan; profil organizer bebas fitur pembeli; splash/login tidak memuat tiket/favorit organizer
+  - Verify: `test/organizer_navigation_test.dart`, `test/profile_screen_test.dart`, `flutter test` (266 lulus), `flutter analyze`, web release build
+  - Files: `lib/screens/main_navigation.dart`, `lib/screens/profile/profile_screen.dart`, `lib/screens/organizer/organizer_dashboard_screen.dart`, `lib/screens/splash/splash_screen.dart`, `lib/screens/auth/login_screen.dart`, `test/organizer_navigation_test.dart`, `test/profile_screen_test.dart`
+
+### Checkpoint 9
+- [x] Navigasi organizer mobile/tablet/desktop lulus (6 test)
+- [x] Profil organizer tidak menampilkan statistik pembeli, Riwayat Transaksi, atau Mode Organizer
+- [x] Deep link event dikonsumsi tanpa membuka Detail Event untuk organizer
+- [x] `flutter analyze` bersih, 266 test lulus, web release build sukses

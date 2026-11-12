@@ -93,6 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loadUserData() async {
+    // Organizer langsung diarahkan ke dashboard dan tidak memakai data
+    // pembeli, jadi jangan muat tiket/favorit untuk akun ini.
+    if (context.read<AuthProvider>().user?.isOrganizer == true) return;
+
     await Future.wait([
       context.read<TicketProvider>().load().catchError((_) {}),
       context.read<FavoriteProvider>().load().catchError((_) {}),

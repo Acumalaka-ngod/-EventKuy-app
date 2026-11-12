@@ -13,14 +13,17 @@ import '../../widgets/app_logo.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/event_card.dart';
 import '../../widgets/event_image.dart';
-import '../scan/scan_screen.dart';
 import 'organizer_event_editor_screen.dart';
 
 /// Dashboard Event Organizer — sesuai desain baru:
 /// kartu event dengan badge status, statistik peserta/check-in/terjual,
 /// dan daftar menu "Kelola Event".
 class OrganizerDashboardScreen extends StatefulWidget {
-  const OrganizerDashboardScreen({super.key});
+  const OrganizerDashboardScreen({super.key, this.refreshSignal});
+
+  /// Sinyal dari shell navigasi untuk memuat ulang statistik, misalnya
+  /// setelah organizer kembali dari Scan QR check-in.
+  final Listenable? refreshSignal;
 
   @override
   State<OrganizerDashboardScreen> createState() =>
@@ -35,6 +38,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    widget.refreshSignal?.addListener(_handleRefreshSignal);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final events = context.read<EventProvider>();
       if (events.events.isEmpty) {
@@ -48,6 +52,25 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
         _loadStats();
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant OrganizerDashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshSignal != widget.refreshSignal) {
+      oldWidget.refreshSignal?.removeListener(_handleRefreshSignal);
+      widget.refreshSignal?.addListener(_handleRefreshSignal);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.refreshSignal?.removeListener(_handleRefreshSignal);
+    super.dispose();
+  }
+
+  void _handleRefreshSignal() {
+    if (mounted) _loadStats(force: true);
   }
 
   /// Statistik dihitung dari seluruh event milik organizer yang login.
@@ -192,10 +215,7 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
                 const SizedBox(height: 6),
                 const Text(
                   'Kelola event yang kamu selenggarakan.',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: AppTheme.textMuted,
-                  ),
+                  style: TextStyle(fontSize: 12.5, color: AppTheme.textMuted),
                 ),
                 const SizedBox(height: 18),
 
@@ -548,21 +568,6 @@ class _OrganizerDashboardScreenState extends State<OrganizerDashboardScreen> {
             title: 'Laporan',
             subtitle: 'Lihat ringkasan event',
             onTap: () => _comingSoon(context, 'Laporan event'),
-          ),
-          const Divider(height: 1, indent: 66),
-          _buildMenuTile(
-            icon: Icons.qr_code_scanner_rounded,
-            color: const Color(0xFF7C3AED),
-            title: 'Scan QR Check-in',
-            subtitle: 'Buka mode panitia',
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ScanScreen()),
-              );
-              if (!mounted) return;
-              _loadStats(force: true);
-            },
           ),
         ],
       ),

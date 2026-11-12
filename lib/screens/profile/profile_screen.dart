@@ -8,8 +8,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/favorite_provider.dart';
 import '../../providers/ticket_provider.dart';
 import '../auth/login_screen.dart';
-import '../organizer/organizer_dashboard_screen.dart';
-import '../scan/scan_screen.dart';
 import 'edit_profile_screen.dart';
 import 'help_center_screen.dart';
 import 'settings_screen.dart';
@@ -19,6 +17,8 @@ class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   void _showLogoutConfirmation(BuildContext context) {
+    final isOrganizer = context.read<AuthProvider>().user?.isOrganizer == true;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -47,7 +47,11 @@ class ProfileScreen extends StatelessWidget {
                 color: AppTheme.redSoft,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.logout_rounded, color: AppTheme.red, size: 28),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: AppTheme.red,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -60,10 +64,16 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Kamu perlu masuk kembali untuk mengakses tiket dan event tersimpanmu.',
+            Text(
+              isOrganizer
+                  ? 'Kamu perlu masuk kembali untuk mengelola eventmu.'
+                  : 'Kamu perlu masuk kembali untuk mengakses tiket dan event tersimpanmu.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: AppTheme.muted, height: 1.6),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.muted,
+                height: 1.6,
+              ),
             ),
             const SizedBox(height: 28),
             Row(
@@ -71,7 +81,9 @@ class ProfileScreen extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(ctx),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 52),
+                    ),
                     child: const Text('Batal'),
                   ),
                 ),
@@ -88,7 +100,9 @@ class ProfileScreen extends StatelessWidget {
                       if (context.mounted) {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
                           (_) => false,
                         );
                       }
@@ -128,12 +142,22 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final tickets = context.watch<TicketProvider>().tickets;
-    final ticketCount = tickets.length;
-    final checkedInCount = tickets
-        .where((ticket) => ticket.status.toLowerCase() == 'checked_in')
-        .length;
-    final favCount = context.watch<FavoriteProvider>().ids.length;
+    final isOrganizer = user?.isOrganizer == true;
+
+    // Akun organizer tidak punya aktivitas pembeli, jadi data tiket dan
+    // favorit tidak perlu dibaca sama sekali.
+    final tickets = isOrganizer
+        ? null
+        : context.watch<TicketProvider>().tickets;
+    final ticketCount = tickets?.length ?? 0;
+    final checkedInCount =
+        tickets
+            ?.where((ticket) => ticket.status.toLowerCase() == 'checked_in')
+            .length ??
+        0;
+    final favCount = isOrganizer
+        ? 0
+        : context.watch<FavoriteProvider>().ids.length;
 
     return Scaffold(
       backgroundColor: AppTheme.canvas,
@@ -192,80 +216,58 @@ class ProfileScreen extends StatelessWidget {
                       user,
                       onEdit: () => _openEditProfile(context),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        _buildStatCard(
-                          'Tiket Saya',
-                          '$ticketCount',
-                          Icons.confirmation_number_rounded,
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStatCard(
-                          'Favorit',
-                          '$favCount',
-                          Icons.favorite_rounded,
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStatCard(
-                          'Check-in',
-                          '$checkedInCount',
-                          Icons.qr_code_scanner_rounded,
-                        ),
-                      ],
-                    ),
+                    if (!isOrganizer) ...[
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          _buildStatCard(
+                            'Tiket Saya',
+                            '$ticketCount',
+                            Icons.confirmation_number_rounded,
+                          ),
+                          const SizedBox(width: 12),
+                          _buildStatCard(
+                            'Favorit',
+                            '$favCount',
+                            Icons.favorite_rounded,
+                          ),
+                          const SizedBox(width: 12),
+                          _buildStatCard(
+                            'Check-in',
+                            '$checkedInCount',
+                            Icons.qr_code_scanner_rounded,
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 32),
                     _buildGroup(
-                      title: 'AKUN & AKTIVITAS',
+                      title: isOrganizer ? 'AKUN' : 'AKUN & AKTIVITAS',
                       items: [
                         _MenuItem(
                           icon: Icons.person_rounded,
                           title: 'Edit Informasi Profil',
                           onTap: () => _openEditProfile(context),
                         ),
-                        _MenuItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Riwayat Transaksi',
-                          onTap: () => _openScreen(
-                            context,
-                            const TransactionHistoryScreen(),
+                        if (!isOrganizer)
+                          _MenuItem(
+                            icon: Icons.receipt_long_rounded,
+                            title: 'Riwayat Transaksi',
+                            onTap: () => _openScreen(
+                              context,
+                              const TransactionHistoryScreen(),
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                    if (user?.isOrganizer == true) ...[
-                      _buildGroup(
-                        title: 'MODE ORGANIZER',
-                        items: [
-                          _MenuItem(
-                            icon: Icons.dashboard_customize_rounded,
-                            title: 'Dashboard Organizer',
-                            onTap: () => _openScreen(
-                              context,
-                              const OrganizerDashboardScreen(),
-                            ),
-                          ),
-                          _MenuItem(
-                            icon: Icons.qr_code_scanner_rounded,
-                            title: 'Scan QR Check-in',
-                            onTap: () => _openScreen(
-                              context,
-                              const ScanScreen(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                     _buildGroup(
                       title: 'BANTUAN',
                       items: [
                         _MenuItem(
                           icon: Icons.help_outline_rounded,
                           title: 'Pusat Bantuan & FAQ',
-                          onTap: () => _openScreen(
-                            context,
-                            const HelpCenterScreen(),
-                          ),
+                          onTap: () =>
+                              _openScreen(context, const HelpCenterScreen()),
                         ),
                       ],
                     ),
@@ -315,9 +317,7 @@ class ProfileScreen extends StatelessWidget {
             foregroundColor: AppTheme.ink,
             backgroundColor: Colors.white,
             fixedSize: const Size(48, 48),
-            shape: const CircleBorder(
-              side: BorderSide(color: AppTheme.border),
-            ),
+            shape: const CircleBorder(side: BorderSide(color: AppTheme.border)),
           ),
           icon: Icon(icon),
         ),
@@ -326,12 +326,15 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileCard(AppUser? user, {required VoidCallback onEdit}) {
-    final displayName = (user?.name.isNotEmpty ?? false) ? user!.name : 'Pengguna';
+    final displayName = (user?.name.isNotEmpty ?? false)
+        ? user!.name
+        : 'Pengguna';
     final email = user?.email ?? 'user@eventkuy.id';
     final isOrganizer = user?.isOrganizer == true;
     final badgeLabel = isOrganizer ? 'Organizer EventKuy' : 'Member EventKuy';
-    final badgeIcon =
-        isOrganizer ? Icons.verified_rounded : Icons.auto_awesome_rounded;
+    final badgeIcon = isOrganizer
+        ? Icons.verified_rounded
+        : Icons.auto_awesome_rounded;
 
     return Container(
       padding: const EdgeInsets.all(32),
@@ -540,7 +543,8 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               children: [
                 for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) const Divider(height: 1, indent: 64, endIndent: 20),
+                  if (i > 0)
+                    const Divider(height: 1, indent: 64, endIndent: 20),
                   InkWell(
                     onTap: items[i].onTap,
                     borderRadius: BorderRadius.vertical(
@@ -601,5 +605,9 @@ class _MenuItem {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-  const _MenuItem({required this.icon, required this.title, required this.onTap});
+  const _MenuItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
 }
