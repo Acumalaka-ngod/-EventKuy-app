@@ -39,3 +39,8 @@ Thumbs.db
 .widget_preview/
 *(AutoRecovered).*
 ~$*
+
+# Dokumen laporan (disimpan lokal, tidak di-push)
+*.docx
+*.doc
+*.pdf
