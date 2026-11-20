@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../core/config.dart';
 import '../models/app_notification.dart';
 import '../models/check_in_result.dart';
@@ -50,17 +51,19 @@ class SupabaseApi implements EventKuyApi {
       // Abaikan: stok ditampilkan sebagai "tersedia penuh".
     }
 
-    return rows.map((row) {
-      final json = Map<String, dynamic>.from(row);
-      json['sold'] = soldByEvent[json['id'].toString()] ?? 0;
-      // organizers dikembalikan sebagai list oleh PostgREST nested select;
-      // ambil entri pertama bila ada.
-      final orgList = json['organizers'];
-      if (orgList is List && orgList.isNotEmpty) {
-        json['organizer'] = orgList.first;
-      }
-      return Event.fromJson(json);
-    }).toList(growable: false);
+    return rows
+        .map((row) {
+          final json = Map<String, dynamic>.from(row);
+          json['sold'] = soldByEvent[json['id'].toString()] ?? 0;
+          // organizers dikembalikan sebagai list oleh PostgREST nested select;
+          // ambil entri pertama bila ada.
+          final orgList = json['organizers'];
+          if (orgList is List && orgList.isNotEmpty) {
+            json['organizer'] = orgList.first;
+          }
+          return Event.fromJson(json);
+        })
+        .toList(growable: false);
   }
 
   static const _eventSelect =
@@ -176,15 +179,18 @@ class SupabaseApi implements EventKuyApi {
     String buyerEmail = '',
     String buyerPhone = '',
   }) async {
-    final result = await _client.rpc('checkout', params: {
-      'p_event_id': eventId,
-      'p_qty': qty,
-      'p_voucher_code': voucherCode,
-      'p_payment_method': paymentMethod,
-      'p_buyer_name': buyerName.trim(),
-      'p_buyer_email': buyerEmail.trim(),
-      'p_buyer_phone': buyerPhone.trim(),
-    });
+    final result = await _client.rpc(
+      'checkout',
+      params: {
+        'p_event_id': eventId,
+        'p_qty': qty,
+        'p_voucher_code': voucherCode,
+        'p_payment_method': paymentMethod,
+        'p_buyer_name': buyerName.trim(),
+        'p_buyer_email': buyerEmail.trim(),
+        'p_buyer_phone': buyerPhone.trim(),
+      },
+    );
 
     return CheckoutResult.fromRpc(Map<String, dynamic>.from(result as Map));
   }
@@ -241,9 +247,7 @@ class SupabaseApi implements EventKuyApi {
         .from('favorites')
         .select('event_id')
         .eq('user_id', _userId);
-    return rows
-        .map((row) => row['event_id'].toString())
-        .toSet();
+    return rows.map((row) => row['event_id'].toString()).toSet();
   }
 
   @override
@@ -280,9 +284,7 @@ class SupabaseApi implements EventKuyApi {
         .from('voucher_redemptions')
         .select('code')
         .eq('user_id', _userId);
-    return rows
-        .map((row) => row['code'].toString().toUpperCase())
-        .toSet();
+    return rows.map((row) => row['code'].toString().toUpperCase()).toSet();
   }
 
   // ── Notifikasi (P2 scaffold) ──────────────────────────────────────
@@ -330,6 +332,15 @@ class SupabaseApi implements EventKuyApi {
       'token': token,
       'platform': platform,
       'updated_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'user_id');
+    }, onConflict: 'user_id,token');
+  }
+
+  /// Hapus token perangkat milik pengguna saat ini (dipanggil saat logout).
+  Future<void> unregisterDeviceToken({required String token}) async {
+    await _client
+        .from('device_tokens')
+        .delete()
+        .eq('user_id', _userId)
+        .eq('token', token);
   }
 }

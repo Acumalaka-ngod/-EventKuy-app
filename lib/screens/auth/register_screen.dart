@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/favorite_provider.dart';
 import '../../providers/ticket_provider.dart';
+import '../../services/push_messaging_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/form_error_banner.dart';
 import '../main_navigation.dart';
@@ -123,9 +124,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    final ticketProvider = context.read<TicketProvider>();
+    final favoriteProvider = context.read<FavoriteProvider>();
+    await PushMessagingService.instance.requestPermission();
     await Future.wait([
-      context.read<TicketProvider>().load().catchError((_) {}),
-      context.read<FavoriteProvider>().load().catchError((_) {}),
+      ticketProvider.load().catchError((_) {}),
+      favoriteProvider.load().catchError((_) {}),
     ]);
 
     if (!mounted) return;

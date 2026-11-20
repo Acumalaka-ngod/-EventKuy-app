@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/favorite_provider.dart';
 import '../../providers/ticket_provider.dart';
+import '../../services/push_messaging_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/form_error_banner.dart';
 import '../main_navigation.dart';
@@ -28,6 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _serverError;
 
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -83,9 +85,48 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    await PushMessagingService.instance.requestPermission();
+    if (!mounted) return;
     await _loadUserData();
     if (!mounted) return;
     setState(() => _isLoading = false);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const MainNavigation()),
+    );
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _serverError = null;
+      _isGoogleLoading = true;
+    });
+
+    final auth = context.read<AuthProvider>();
+    final error = await auth.signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (error != null) {
+      setState(() {
+        _isGoogleLoading = false;
+        _serverError = error;
+      });
+      return;
+    }
+
+    // Dialog Google ditutup pengguna: tidak ada sesi baru.
+    if (!auth.isLoggedIn) {
+      setState(() => _isGoogleLoading = false);
+      return;
+    }
+
+    await PushMessagingService.instance.requestPermission();
+    if (!mounted) return;
+    await _loadUserData();
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const MainNavigation()),
@@ -287,13 +328,19 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _socialComingSoon('Google'),
-                    icon: const Icon(
-                      Icons.g_mobiledata_rounded,
-                      size: 26,
-                      color: Color(0xFFEA4335),
-                    ),
-                    label: const Text('Google'),
+                    onPressed: _isGoogleLoading ? null : _handleGoogleLogin,
+                    icon: _isGoogleLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(
+                            Icons.g_mobiledata_rounded,
+                            size: 26,
+                            color: Color(0xFFEA4335),
+                          ),
+                    label: Text(_isGoogleLoading ? 'Memuat...' : 'Google'),
                     style: _socialStyle(),
                   ),
                 ),

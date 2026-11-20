@@ -12,8 +12,11 @@ supabase.local.json
 
 # Android
 android/local.properties
+android/key.properties
 android/key.jks
 android/keystore.jks
+android/*.jks
+android/app/*.jks
 android/app/google-services.json
 
 # iOS

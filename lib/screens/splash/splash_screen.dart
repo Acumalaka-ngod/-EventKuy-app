@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/favorite_provider.dart';
 import '../../providers/ticket_provider.dart';
+import '../../services/push_messaging_service.dart';
 import '../../widgets/app_logo.dart';
 import '../auth/login_screen.dart';
 import '../main_navigation.dart';
@@ -69,6 +70,11 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     await auth.tryAutoLogin();
     if (!mounted) return;
+
+    if (auth.isLoggedIn) {
+      await PushMessagingService.instance.syncToken();
+      if (!mounted) return;
+    }
 
     // Organizer tidak memakai tiket/favorit pembeli; dashboard memuat
     // datanya sendiri setelah layar terbuka.

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../core/config.dart';
 import '../core/errors.dart';
 import '../models/user.dart';
+import '../services/google_auth_service.dart';
+import '../services/push_messaging_service.dart';
 
 /// Auth Supabase (email + password) dengan profil dari tabel `profiles`.
 class AuthProvider extends ChangeNotifier {
@@ -20,7 +23,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<AppUser> _toAppUser(User user) async {
-    var name = (user.userMetadata?['name'] as String?)?.trim() ?? '';
+    final metadata = user.userMetadata ?? const <String, dynamic>{};
+    var name = (metadata['name'] as String?)?.trim() ?? '';
+    if (name.isEmpty) {
+      name = (metadata['full_name'] as String?)?.trim() ?? '';
+    }
     var role = 'pengguna';
     String? avatarUrl;
 
@@ -44,6 +51,13 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (_) {
       // Profil belum terbaca — pakai metadata auth sebagai fallback.
+    }
+
+    if (avatarUrl == null) {
+      final metadataAvatar = metadata['avatar_url'] ?? metadata['picture'];
+      if (metadataAvatar is String && metadataAvatar.trim().isNotEmpty) {
+        avatarUrl = metadataAvatar.trim();
+      }
     }
 
     if (name.isEmpty) {
@@ -89,6 +103,28 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Masuk dengan Google lalu tukar ID token menjadi sesi Supabase.
+  Future<String?> signInWithGoogle() async {
+    try {
+      final result = await GoogleAuthService.instance.signIn();
+      if (result.canceled) return null;
+      if (result.error != null) return result.error;
+
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: result.idToken!,
+      );
+      final user = response.user;
+      if (user != null) {
+        _user = await _toAppUser(user);
+        notifyListeners();
+      }
+      return null;
+    } catch (error) {
+      return friendlyError(error);
+    }
+  }
+
   Future<String?> register(String name, String email, String password) async {
     try {
       final response = await _client.auth.signUp(
@@ -120,14 +156,16 @@ class AuthProvider extends ChangeNotifier {
       final current = _client.auth.currentUser;
       if (current == null) return 'Sesi login tidak ditemukan.';
 
-      await _client.from('profiles').update({
-        'name': trimmed,
-        if (avatarUrl != null && avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
-      }).eq('id', current.id);
+      await _client
+          .from('profiles')
+          .update({
+            'name': trimmed,
+            if (avatarUrl != null && avatarUrl.isNotEmpty)
+              'avatar_url': avatarUrl,
+          })
+          .eq('id', current.id);
 
-      await _client.auth.updateUser(
-        UserAttributes(data: {'name': trimmed}),
-      );
+      await _client.auth.updateUser(UserAttributes(data: {'name': trimmed}));
       await _refreshUser();
       return null;
     } catch (error) {
@@ -192,11 +230,33 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Hapus token push sebelum sesi Supabase berakhir agar notifikasi
+    // pengguna ini tidak ikut terkirim ke pengguna berikutnya di perangkat.
+    await PushMessagingService.instance.clearToken();
     try {
       await _client.auth.signOut();
     } catch (_) {
       // Tetap bersihkan state lokal walau jaringan bermasalah.
     }
+    await GoogleAuthService.instance.signOut();
+    _user = null;
+    notifyListeners();
+  }
+
+  /// Hapus akun beserta data terkait di Supabase, lalu bersihkan sesi lokal.
+  ///
+  /// RPC `delete_account` (supabase/account_deletion.sql) berjalan sebagai
+  /// security definer dan menghapus baris auth.users, sehingga token lama
+  /// otomatis tidak valid lagi.
+  Future<void> deleteAccount() async {
+    await PushMessagingService.instance.clearToken();
+    await _client.rpc('delete_account');
+    try {
+      // Baris auth sudah hilang, jadi signOut bisa gagal secara jaringan.
+      // State lokal tetap dibersihkan di bawah.
+      await _client.auth.signOut();
+    } catch (_) {}
+    await GoogleAuthService.instance.signOut();
     _user = null;
     notifyListeners();
   }

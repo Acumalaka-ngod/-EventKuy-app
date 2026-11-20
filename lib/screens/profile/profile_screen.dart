@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/errors.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../models/user.dart';
@@ -119,6 +120,53 @@ class ProfileScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showDeleteAccountConfirmation(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.delete_forever_rounded, color: AppTheme.red),
+        title: const Text('Hapus akun EventKuy?'),
+        content: const Text(
+          'Akun, profil, tiket, transaksi, favorit, dan event yang kamu buat '
+          'akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final navigator = Navigator.of(ctx);
+              final messenger = ScaffoldMessenger.of(ctx);
+              navigator.pop();
+              try {
+                await context.read<AuthProvider>().deleteAccount();
+                if (!context.mounted) return;
+                context.read<FavoriteProvider>().clear();
+                context.read<TicketProvider>().clear();
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (_) => false,
+                );
+              } catch (error) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(friendlyError(error))),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus Permanen'),
+          ),
+        ],
       ),
     );
   }
@@ -258,6 +306,11 @@ class ProfileScreen extends StatelessWidget {
                               const TransactionHistoryScreen(),
                             ),
                           ),
+                        _MenuItem(
+                          icon: Icons.delete_forever_rounded,
+                          title: 'Hapus Akun',
+                          onTap: () => _showDeleteAccountConfirmation(context),
+                        ),
                       ],
                     ),
                     _buildGroup(

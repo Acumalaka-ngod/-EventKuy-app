@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/deep_link.dart';
+import '../core/notification_router.dart';
 import '../providers/deep_link_provider.dart';
 
 /// Host inisialisasi deep link dan pengerahan event ID ke Detail Event.
@@ -31,6 +32,7 @@ class _DeepLinkHostState extends State<DeepLinkHost> {
   @override
   void initState() {
     super.initState();
+    NotificationRouter.setHandler(_handleNotificationUri);
     _initDeepLink();
   }
 
@@ -45,8 +47,19 @@ class _DeepLinkHostState extends State<DeepLinkHost> {
 
   @override
   void dispose() {
+    NotificationRouter.clearHandler();
     _linkSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Ketukan notifikasi push diteruskan ke antrean deep link yang sama
+  /// dengan tautan `eventkuy://event/<id>`.
+  void _handleNotificationUri(String uri) {
+    try {
+      context.read<DeepLinkProvider>().handleUri(uri);
+    } catch (_) {
+      // Provider belum terdaftar (mis. dalam beberapa widget test).
+    }
   }
 
   Future<void> _initDeepLink() async {

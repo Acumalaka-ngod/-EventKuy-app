@@ -306,4 +306,34 @@ void main() {
     expect(find.text('Keluar dari Akun'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('menu Hapus Akun menampilkan konfirmasi permanen', (
+    tester,
+  ) async {
+    _tallSurface(tester);
+    final seeded = await _seed(tester, MockApiService());
+
+    await tester.pumpWidget(
+      _app(
+        auth: AuthProvider(initialUser: _user),
+        tickets: seeded.tickets,
+        favorites: seeded.favorites,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hapus Akun'), findsOneWidget);
+    await tester.tap(find.text('Hapus Akun'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hapus akun EventKuy?'), findsOneWidget);
+    expect(find.text('Hapus Permanen'), findsOneWidget);
+    expect(find.text('Batal'), findsOneWidget);
+
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hapus akun EventKuy?'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

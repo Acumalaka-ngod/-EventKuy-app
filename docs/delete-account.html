@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hapus Akun EventKuy</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 0 auto; padding: 32px 20px; line-height: 1.6; }
+    input, button { font: inherit; padding: 10px 12px; }
+    button { cursor: pointer; }
+    .message { margin-top: 16px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Hapus Akun EventKuy</h1>
+  <p>Halaman ini mengirim tautan konfirmasi ke email akun EventKuy kamu.
+    Penghapusan hanya terjadi setelah tautan tersebut dibuka.</p>
+
+  <form id="form">
+    <label for="email">Email akun EventKuy</label><br>
+    <input id="email" type="email" required placeholder="nama@email.com"><br><br>
+    <button type="submit">Kirim tautan hapus akun</button>
+  </form>
+  <p id="message" class="message"></p>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    // TODO: isi sebelum publikasi. Keduanya nilai publik (anon key), bukan service role key.
+    const SUPABASE_URL = 'https://esdmpwwtapdgcusteiny.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const FUNCTION_URL = 'https://esdmpwwtapdgcusteiny.supabase.co/functions/v1/delete-account';
+
+    const message = document.getElementById('message');
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const accessToken = hashParams.get('access_token');
+
+    if (accessToken) {
+      history.replaceState(null, '', location.pathname);
+      message.textContent = 'Memverifikasi tautan dan menghapus akun…';
+      const response = await fetch(FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const result = await response.json();
+      message.textContent = response.ok
+        ? 'Akun dan data terkait berhasil dihapus.'
+        : `Gagal: ${result.error ?? 'tidak diketahui'}`;
+      document.getElementById('form').hidden = true;
+    } else {
+      document.getElementById('form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: location.href.split('#')[0] },
+        });
+        message.textContent = error
+          ? `Gagal mengirim tautan: ${error.message}`
+          : 'Tautan konfirmasi dikirim. Buka tautan tersebut untuk menghapus akun.';
+      });
+    }
+  </script>
+</body>
+</html>
