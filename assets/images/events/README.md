@@ -38,11 +38,14 @@ Simpan foto/poster event kamu di folder ini.
 1. Jalankan migrasi berikut sekali di SQL Editor Supabase:
    - `supabase/schema.sql` - tabel, view, RPC, dan RLS dasar.
    - `supabase/p2_event_content.sql` - tabel `organizers`, kolom rating.
-   - `supabase/organizer_events.sql` - GRANT `select, insert, update`
-     pada `public.events` untuk role `authenticated`.
-   - `supabase/storage.sql` - bucket publik `event-images` + policy upload.
+   - `supabase/organizer_events.sql` - GRANT kolom aman pada `public.events`.
+   - **`supabase/security_hardening.sql` terakhir** - bucket publik
+     `event-images` dengan batas 5 MB, MIME type JPEG/PNG/WebP, dan policy
+     upload/update/delete yang mewajibkan folder `<user_id>/`.
+   File `supabase/storage.sql` lama sudah deprecated.
 2. Pastikan akun organizer punya `profiles.role = 'organizer'`. Role ini
-   dipakai policy Storage untuk mengizinkan upload.
+   dipakai `is_organizer()` untuk mengizinkan upload. File disimpan di
+   `event-images/<user_id>/<nama-file>`.
 3. Buka aplikasi sebagai organizer, lalu:
    **Profil -> Dashboard Organizer -> Buat Event Baru** (atau tap kartu
    event untuk mengedit). Pada bagian **Poster Event**, pilih

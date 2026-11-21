@@ -2,6 +2,9 @@
 -- EventKuy - Migrasi P2: Notifikasi (Scaffold, Tanpa Firebase)
 -- Jalankan di Supabase Dashboard -> SQL Editor, setelah schema.sql.
 -- Aman dijalankan berulang (idempotent).
+--
+-- Policy/RLS final untuk notifications dan device_tokens ada di
+-- `security_hardening.sql`. Jalankan file itu TERAKHIR setelah file ini.
 -- ============================================================
 
 -- ------------------------------------------------------------

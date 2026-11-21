@@ -6,9 +6,13 @@
 -- dan aman dijalankan berulang (idempotent).
 --
 -- Yang dibuat/diubah:
---   1. tabel voucher_redemptions  -> satu voucher hanya sekali per user
+--   1. tabel voucher_redemptions  -> catatan pemakaian voucher
 --   2. view event_stock           -> jumlah tiket terjual per event
 --   3. RPC checkout(uuid, int, text, text) dengan qty + validasi stok
+--
+-- CATATAN: aturan final voucher adalah single-use GLOBAL dan RPC
+-- checkout final ada di `security_hardening.sql`. Jalankan file itu
+-- TERAKHIR setelah migrasi ini.
 -- ------------------------------------------------------------
 
 -- 1. Catatan pemakaian voucher ---------------------------------

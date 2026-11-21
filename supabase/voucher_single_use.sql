@@ -1,0 +1,12 @@
+-- ------------------------------------------------------------
+-- DEPRECATED - jangan dijalankan lagi.
+-- ------------------------------------------------------------
+-- File ini dulu mengubah primary key voucher_redemptions menjadi (code)
+-- dan menurunkan kuota voucher ke 1. Logika tersebut sekarang menjadi
+-- bagian dari `security_hardening.sql` (bagian 8), yang juga menangani
+-- status reserved/redeemed, transaksi, dan pembersihan duplikat.
+--
+-- Jalankan `supabase/security_hardening.sql` sekali di SQL Editor
+-- SETELAH semua migrasi lain. File ini sengaja dibiarkan tanpa SQL
+-- supaya tidak ada dua sumber kebenaran yang bisa berbeda.
+-- ------------------------------------------------------------

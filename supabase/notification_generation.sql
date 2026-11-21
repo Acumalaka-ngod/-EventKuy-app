@@ -6,6 +6,10 @@
 --
 -- Aman dijalankan berulang (idempotent).
 --
+-- Versi checkout()/check_in_ticket() di file ini digantikan oleh
+-- `security_hardening.sql`. Jalankan file itu TERAKHIR setelah file ini;
+-- notifikasi otomatis tetap ada di versi final.
+--
 -- Migrasi ini mendefinisikan ulang checkout() dan check_in_ticket()
 -- supaya keduanya menulis ke public.notifications. Trigger
 -- notifications_send_push lalu meneruskan baris baru ke Edge Function

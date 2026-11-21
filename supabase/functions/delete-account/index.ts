@@ -1,8 +1,11 @@
 // Supabase Edge Function: delete-account
 //
 // Dipakai oleh halaman web penghapusan akun (docs/delete-account.html).
-// Caller mengirim access token user (bukan service role key). Function
-// memverifikasi token, lalu menghapus data profil dan akun auth.
+// Caller mengirim access token user (bukan service role key) dan body
+// `{ "confirm": true }`. Function memverifikasi token, lalu memanggil RPC
+// `delete_account` sebagai user tersebut. RPC berjalan security definer:
+// data pribadi dianonimkan, riwayat tiket/transaksi pembeli dipertahankan,
+// dan baris auth.users dihapus.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -31,45 +34,44 @@ Deno.serve(async (req: Request) => {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!token) return json({ error: 'Token akses wajib diisi' }, 401);
 
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: 'Body JSON wajib diisi' }, 400);
+  }
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    (body as { confirm?: unknown }).confirm !== true
+  ) {
+    return json(
+      { error: 'Konfirmasi eksplisit wajib dikirim: { "confirm": true }' },
+      400,
+    );
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseUrl || !serviceKey) {
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!supabaseUrl || !anonKey) {
     return json({ error: 'Konfigurasi Supabase belum lengkap' }, 500);
   }
 
-  const admin = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false },
+  // Klien memakai JWT pemilik akun supaya auth.uid() bekerja di RPC
+  // delete_account. Tidak perlu service role key di function ini.
+  const supabase = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
   try {
-    const { data, error } = await admin.auth.getUser(token);
+    const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) {
       return json({ error: 'Token tidak valid' }, 401);
     }
-    const userId = data.user.id;
 
-    // Urutan mengikuti foreign key; sisa data ber-cascade saat auth.users dihapus.
-    const targets: Array<[string, string]> = [
-      ['voucher_redemptions', 'user_id'],
-      ['notifications', 'user_id'],
-      ['device_tokens', 'user_id'],
-      ['favorites', 'user_id'],
-      ['transactions', 'user_id'],
-      ['tickets', 'user_id'],
-      ['events', 'organizer_id'],
-      ['organizers', 'owner_id'],
-      ['profiles', 'id'],
-    ];
-    for (const [table, column] of targets) {
-      const { error: deleteError } = await admin
-        .from(table)
-        .delete()
-        .eq(column, userId);
-      if (deleteError) console.error(`Gagal menghapus ${table}: `, deleteError);
-    }
-
-    const { error: authError } = await admin.auth.deleteUser(userId);
-    if (authError) throw authError;
+    const { error: rpcError } = await supabase.rpc('delete_account');
+    if (rpcError) throw rpcError;
 
     return json({ deleted: true });
   } catch (error) {

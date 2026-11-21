@@ -4,7 +4,7 @@
 #
 # Alur:
 #   1. Login attendee dan organizer.
-#   2. Checkout event seed dengan voucher EVENTKUY.
+#   2. Checkout event seed (opsional dengan voucher lewat -VoucherCode).
 #   3. Pastikan tiket dan transaksi tersimpan.
 #   4. Pastikan attendee tidak boleh check-in.
 #   5. Check-in oleh organizer, lalu pastikan duplikasi ditolak.
@@ -21,7 +21,10 @@ param(
   [string]$AttendeeEmail,
   [string]$AttendeePassword,
   [string]$EventId = "11111111-1111-4111-8111-000000000001",
-  [string]$VoucherCode = "EVENTKUY"
+  # Kosong = tanpa voucher, supaya script bisa dijalankan berulang.
+  # Voucher sekarang single-use global; isi -VoucherCode hanya untuk uji
+  # sekali pakai, lalu reset redemption lewat SQL Editor.
+  [string]$VoucherCode = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -158,13 +161,20 @@ $attendee = Get-Session -Email $AttendeeEmail -Password $AttendeePassword -Label
 $organizer = Get-Session -Email $OrganizerEmail -Password $OrganizerPassword -Label "organizer"
 
 # ------------------------------------------------------------
-Write-Step "2. Checkout dengan voucher $VoucherCode"
+Write-Step "2. Checkout event seed"
 # ------------------------------------------------------------
-$checkout = Invoke-Supa -Method Post -Path "/rest/v1/rpc/checkout" -Headers $attendee.Headers -Body @{
+$checkoutBody = @{
   p_event_id       = $EventId
-  p_voucher_code   = $VoucherCode
   p_payment_method = "GoPay"
+  p_buyer_name     = "E2E Attendee"
+  p_buyer_email    = $AttendeeEmail
+  p_buyer_phone    = "081234567890"
 }
+if ($VoucherCode) {
+  $checkoutBody.p_voucher_code = $VoucherCode
+  Write-Host "   Voucher: $VoucherCode"
+}
+$checkout = Invoke-Supa -Method Post -Path "/rest/v1/rpc/checkout" -Headers $attendee.Headers -Body $checkoutBody
 
 if ($checkout.Status -ge 400) {
   Fail "Checkout gagal (HTTP $($checkout.Status): $($checkout.Raw))."

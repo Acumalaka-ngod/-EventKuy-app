@@ -2,6 +2,10 @@
 -- EventKuy - Migrasi P2: Data Pembeli di Transaksi
 -- Jalankan di Supabase Dashboard -> SQL Editor, setelah schema.sql.
 -- Aman dijalankan berulang (idempotent).
+--
+-- File ini mendefinisikan RPC checkout() versi lama. Versi final ada di
+-- `security_hardening.sql`, jadi jalankan file itu TERAKHIR setelah
+-- migrasi ini.
 -- ============================================================
 
 -- ------------------------------------------------------------

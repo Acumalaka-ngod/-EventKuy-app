@@ -245,9 +245,9 @@ class AuthProvider extends ChangeNotifier {
 
   /// Hapus akun beserta data terkait di Supabase, lalu bersihkan sesi lokal.
   ///
-  /// RPC `delete_account` (supabase/account_deletion.sql) berjalan sebagai
-  /// security definer dan menghapus baris auth.users, sehingga token lama
-  /// otomatis tidak valid lagi.
+  /// RPC `delete_account` (supabase/security_hardening.sql) berjalan sebagai
+  /// security definer, menganonimkan riwayat pembeli, lalu menghapus baris
+  /// auth.users sehingga token lama otomatis tidak valid lagi.
   Future<void> deleteAccount() async {
     await PushMessagingService.instance.clearToken();
     await _client.rpc('delete_account');

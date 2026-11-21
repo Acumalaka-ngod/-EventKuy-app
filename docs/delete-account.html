@@ -8,19 +8,37 @@
     body { font-family: system-ui, sans-serif; max-width: 640px; margin: 0 auto; padding: 32px 20px; line-height: 1.6; }
     input, button { font: inherit; padding: 10px 12px; }
     button { cursor: pointer; }
+    button:disabled { cursor: wait; opacity: 0.6; }
+    .danger { background: #b42318; color: #fff; border: 0; border-radius: 8px; font-weight: 700; }
     .message { margin-top: 16px; font-weight: 600; }
+    .warning { background: #fef3f2; border: 1px solid #fecdca; border-radius: 8px; padding: 14px 16px; }
   </style>
 </head>
 <body>
   <h1>Hapus Akun EventKuy</h1>
-  <p>Halaman ini mengirim tautan konfirmasi ke email akun EventKuy kamu.
-    Penghapusan hanya terjadi setelah tautan tersebut dibuka.</p>
+  <p>Halaman ini mengirim tautan verifikasi ke email akun EventKuy kamu.</p>
+  <p>Penghapusan baru terjadi setelah kamu membuka tautan tersebut <strong>dan</strong>
+    menekan tombol <em>Hapus akun saya sekarang</em>. Tanpa menekan tombol itu,
+    akun tetap aktif.</p>
 
   <form id="form">
     <label for="email">Email akun EventKuy</label><br>
     <input id="email" type="email" required placeholder="nama@email.com"><br><br>
-    <button type="submit">Kirim tautan hapus akun</button>
+    <button type="submit">Kirim tautan verifikasi</button>
   </form>
+
+  <div id="confirm" hidden>
+    <div class="warning">
+      <p><strong>Konfirmasi terakhir.</strong> Tindakan ini permanen. Data pribadi
+        (nama, email, telepon, favorit, notifikasi) akan dihapus atau dianonimkan.
+        Riwayat tiket dan transaksi tetap disimpan untuk keperluan laporan
+        penyelenggara, tanpa terhubung ke akunmu.</p>
+      <button id="confirm-button" class="danger" type="button">
+        Hapus akun saya sekarang
+      </button>
+    </div>
+  </div>
+
   <p id="message" class="message"></p>
 
   <script type="module">
@@ -32,39 +50,68 @@
     const FUNCTION_URL = 'https://esdmpwwtapdgcusteiny.supabase.co/functions/v1/delete-account';
 
     const message = document.getElementById('message');
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const form = document.getElementById('form');
+    const confirmBox = document.getElementById('confirm');
+    const confirmButton = document.getElementById('confirm-button');
+    // Jangan biarkan client menghapus hash sebelum access_token dibaca.
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { detectSessionInUrl: false, persistSession: false },
+    });
 
     const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
     const accessToken = hashParams.get('access_token');
 
+    async function deleteAccount() {
+      confirmButton.disabled = true;
+      message.textContent = 'Menghapus akun…';
+      try {
+        const response = await fetch(FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+            apikey: SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ confirm: true }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok) {
+          confirmBox.hidden = true;
+          form.hidden = true;
+          message.textContent =
+            'Akun berhasil dihapus. Riwayat tiket/transaksi tetap tersimpan tanpa data pribadimu.';
+        } else {
+          confirmButton.disabled = false;
+          message.textContent = `Gagal: ${result.error ?? 'tidak diketahui'}`;
+        }
+      } catch (error) {
+        confirmButton.disabled = false;
+        message.textContent = `Gagal menghubungi server: ${error}`;
+      }
+    }
+
     if (accessToken) {
       history.replaceState(null, '', location.pathname);
-      message.textContent = 'Memverifikasi tautan dan menghapus akun…';
-      const response = await fetch(FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-          apikey: SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ confirm: true }),
-      });
-      const result = await response.json();
-      message.textContent = response.ok
-        ? 'Akun dan data terkait berhasil dihapus.'
-        : `Gagal: ${result.error ?? 'tidak diketahui'}`;
-      document.getElementById('form').hidden = true;
+      form.hidden = true;
+      confirmBox.hidden = false;
+      message.textContent =
+        'Tautan terverifikasi. Tekan tombol merah di atas untuk menghapus akun secara permanen.';
+      confirmButton.addEventListener('click', deleteAccount);
     } else {
-      document.getElementById('form').addEventListener('submit', async (event) => {
+      form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const email = document.getElementById('email').value.trim();
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: location.href.split('#')[0] },
+          options: {
+            emailRedirectTo: location.href.split('#')[0],
+            // Jangan buat akun baru dari halaman penghapusan.
+            shouldCreateUser: false,
+          },
         });
         message.textContent = error
           ? `Gagal mengirim tautan: ${error.message}`
-          : 'Tautan konfirmasi dikirim. Buka tautan tersebut untuk menghapus akun.';
+          : 'Tautan verifikasi dikirim. Buka tautan tersebut, lalu tekan tombol konfirmasi untuk menghapus akun.';
       });
     }
   </script>

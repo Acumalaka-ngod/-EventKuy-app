@@ -39,25 +39,35 @@ alter table public.events
 
 alter table public.organizers enable row level security;
 
+drop policy if exists "organizers_insert_service" on public.organizers;
+drop policy if exists "organizers_update_service" on public.organizers;
+drop policy if exists "organizers_insert_own" on public.organizers;
+drop policy if exists "organizers_update_own" on public.organizers;
 drop policy if exists "organizers_select_authenticated" on public.organizers;
+
 create policy "organizers_select_authenticated" on public.organizers
   for select to authenticated
   using (true);
 
-drop policy if exists "organizers_insert_service" on public.organizers;
-create policy "organizers_insert_service" on public.organizers
+-- Hanya organizer yang boleh membuat profil untuk dirinya sendiri.
+-- Status `verified` tidak termasuk grant insert, jadi selalu false.
+create policy "organizers_insert_own" on public.organizers
   for insert to authenticated
-  with check (true);
+  with check (owner_id = auth.uid() and public.is_organizer());
 
-drop policy if exists "organizers_update_service" on public.organizers;
-create policy "organizers_update_service" on public.organizers
+-- Owner hanya boleh mengubah kolom profil; `owner_id` dan `verified`
+-- tidak termasuk grant update sehingga tidak bisa diubah dari client.
+create policy "organizers_update_own" on public.organizers
   for update to authenticated
-  using (true)
-  with check (true);
+  using (owner_id = auth.uid() and public.is_organizer())
+  with check (owner_id = auth.uid() and public.is_organizer());
 
+revoke all on table public.organizers from anon, authenticated;
 grant select on table public.organizers to authenticated;
-grant insert on table public.organizers to authenticated;
-grant update on table public.organizers to authenticated;
+grant insert (owner_id, name, bio, avatar_url, city)
+  on table public.organizers to authenticated;
+grant update (name, bio, avatar_url, city)
+  on table public.organizers to authenticated;
 
 -- ------------------------------------------------------------
 -- Seed organizer demo

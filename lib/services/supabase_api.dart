@@ -269,10 +269,17 @@ class SupabaseApi implements EventKuyApi {
 
   @override
   Future<Voucher?> fetchVoucher(String code) async {
+    // Voucher single-use global: kode yang sudah habis (quota 0) atau di
+    // luar masa berlaku tidak ditampilkan sebagai valid di UI. Backend
+    // tetap memvalidasi ulang saat checkout.
+    final now = DateTime.now().toIso8601String();
     final row = await _client
         .from('vouchers')
         .select('code, discount')
         .eq('code', code.trim().toUpperCase())
+        .gt('quota', 0)
+        .lte('active_from', now)
+        .gte('active_to', now)
         .maybeSingle();
     if (row == null) return null;
     return Voucher.fromJson(Map<String, dynamic>.from(row));
@@ -327,20 +334,17 @@ class SupabaseApi implements EventKuyApi {
     required String token,
     String platform = 'unknown',
   }) async {
-    await _client.from('device_tokens').upsert({
-      'user_id': _userId,
-      'token': token,
-      'platform': platform,
-      'updated_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'user_id,token');
+    // Token FCM unik per perangkat. RPC ini memindahkan kepemilikan token
+    // dari akun lama ke akun yang sedang login tanpa membocorkan token
+    // antar akun.
+    await _client.rpc(
+      'claim_device_token',
+      params: {'p_token': token, 'p_platform': platform},
+    );
   }
 
   /// Hapus token perangkat milik pengguna saat ini (dipanggil saat logout).
   Future<void> unregisterDeviceToken({required String token}) async {
-    await _client
-        .from('device_tokens')
-        .delete()
-        .eq('user_id', _userId)
-        .eq('token', token);
+    await _client.rpc('release_device_token', params: {'p_token': token});
   }
 }

@@ -2,6 +2,11 @@
 -- EventKuy - Skema Supabase
 -- Jalankan di Supabase Dashboard -> SQL Editor.
 -- Cakupan: tabel aplikasi, trigger profil, RLS, dan RPC.
+--
+-- PENTING: file ini adalah fondasi, bukan versi final. Setelah semua
+-- migrasi lain dijalankan, WAJIB jalankan `security_hardening.sql`
+-- terakhir. File itu mengganti RPC checkout/check-in/hapus akun,
+-- memperketat RLS/grant, dan menerapkan aturan bisnis terbaru.
 -- ============================================================
 
 create extension if not exists pgcrypto;

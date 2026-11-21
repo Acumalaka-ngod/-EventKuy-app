@@ -17,11 +17,19 @@ Row Level Security, dan RPC). Pembayaran Midtrans masih disimulasikan di RPC
 
 1. Buat project di [supabase.com](https://supabase.com) lalu salin **Project URL**
    dan **anon/publishable key** dari Settings > API.
-2. Buka **SQL Editor**, jalankan `supabase/schema.sql` lalu `supabase/seed.sql`.
-   Untuk database yang sudah berjalan, cukup jalankan ulang `schema.sql` (semua
-   perintahnya idempotent) agar migrasi terbaru seperti kolom `events.image_urls`
-   ikut terpasang. `seed.sql` juga menyertakan migrasi kolom tersebut, jadi aman
-   dijalankan sendiri.
+2. Buka **SQL Editor**. Untuk database baru, jalankan berurutan:
+   1. `supabase/schema.sql` — tabel, RLS dasar, trigger profil.
+   2. `supabase/seed.sql` — 7 event demo + voucher.
+   3. `supabase/p2_event_content.sql` — organizer + rating.
+   4. `supabase/p2_notifications.sql` — tabel notifikasi + device token.
+   5. `supabase/push_webhook.sql` (opsional, butuh Vault + Edge Function).
+   6. **`supabase/security_hardening.sql` terakhir** — versi final RPC,
+      grant kolom, RLS, voucher single-use, dan aturan pembayaran.
+
+   File lama `p2_checkout_buyer.sql`, `notification_generation.sql`,
+   `qty_voucher_stock.sql`, `storage.sql`, dan `account_deletion.sql` sudah
+   digantikan oleh hardening. Detail dan urutan lengkap ada di
+   [`docs/BACKEND_HARDENING.md`](docs/BACKEND_HARDENING.md).
 3. (Disarankan untuk demo) Nonaktifkan konfirmasi email di
    Authentication > Providers > Email agar akun baru langsung dapat masuk.
 4. Salin contoh konfigurasi lokal, lalu isi URL dan anon key:
@@ -75,8 +83,28 @@ Verifikasi akun organizer dan kepemilikan event:
 pwsh -File tool/verify-organizer.ps1
 ```
 
-Check-in hanya dapat dilakukan organizer pemilik event. Voucher demo:
-`EVENTKUY` dan `DISKON10` (diskon Rp 25.000).
+Check-in hanya dapat dilakukan organizer pemilik event, dan baru dibuka pada
+tanggal event (zona `Asia/Jakarta`). Voucher demo: `EVENTKUY` dan `DISKON10`
+(diskon Rp 25.000). Sesuai Syarat & Ketentuan, setiap kode voucher hanya bisa
+dipakai **sekali secara global**; kuotanya selalu 1.
+
+### Mode pembayaran
+
+`security_hardening.sql` membuat tabel `app_settings` dengan
+`payment_mode = 'simulation'` sebagai default:
+
+- **simulation** — tiket langsung `paid` tanpa uang sungguhan. Dialog checkout
+  menampilkan label “Mode simulasi: tidak ada dana yang ditarik.”
+- **live** — checkout hanya membuat tiket/transaksi `pending`. Tiket menjadi
+  `paid` setelah server pembayaran memanggil RPC `confirm_payment` memakai
+  service role. Jangan aktifkan mode ini sebelum gateway + webhook signature
+  siap:
+
+```sql
+update public.app_settings
+set value = 'live', updated_at = now()
+where key = 'payment_mode';
+```
 
 ### Kamera & e-tiket PDF
 
@@ -99,10 +127,11 @@ Lalu isi kolom `image_url` di tabel `events` dengan salah satu bentuk:
 - `https://<project>.supabase.co/storage/v1/object/public/event-images/...`
   — Supabase Storage, bisa diganti tanpa rebuild.
 
-Untuk opsi kedua, jalankan `supabase/storage.sql` sekali di SQL Editor
-(membuat bucket publik `event-images` + policy: semua boleh lihat, hanya
-organizer yang boleh upload). Detail lengkap ada di
-[`assets/images/events/README.md`](assets/images/events/README.md).
+Untuk opsi kedua, jalankan `supabase/security_hardening.sql` (bagian 14).
+File itu membuat bucket publik `event-images` dengan batas 5 MB,
+MIME type JPEG/PNG/WebP, dan policy upload yang mewajibkan folder
+`<user_id>/`. `supabase/storage.sql` lama sudah deprecated. Detail lengkap ada
+di [`assets/images/events/README.md`](assets/images/events/README.md).
 
 ## Verifikasi
 
@@ -136,11 +165,12 @@ pwsh -File tool/verify-e2e.ps1
 ### Checklist P0
 
 Lihat [`docs/P0_CHECKLIST.md`](docs/P0_CHECKLIST.md) untuk urutan setup,
-E2E, dan pengujian kamera/PDF.
+E2E, dan pengujian kamera/PDF. Rincian hardening backend ada di
+[`docs/BACKEND_HARDENING.md`](docs/BACKEND_HARDENING.md).
 
 ## Struktur
 
-- `supabase/` — `schema.sql` (tabel, RLS, trigger, RPC), `seed.sql` (event + voucher), dan `storage.sql` (bucket gambar event).
+- `supabase/` — `schema.sql` (fondasi tabel/RLS/trigger), `seed.sql` (event + voucher), dan `security_hardening.sql` (migrasi final: RPC, grant kolom, RLS, storage, aturan bisnis).
 - `assets/images/events/` — tempat menaruh foto/poster event milikmu.
 - `lib/core/` — tema (`theme.dart`), breakpoint (`responsive.dart`), konfigurasi (`config.dart`), error (`errors.dart`).
 - `lib/services/` — kontrak `EventKuyApi`, implementasi `SupabaseApi`, `TicketPdfService`, dan `MockApiService` untuk test.

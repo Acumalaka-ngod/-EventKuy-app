@@ -54,24 +54,21 @@ class MockApiService implements EventKuyApi {
   static final _organizerEventkuy = Organizer(
     id: 'a14d6633-bdd9-4af6-a012-cda59d8cc9fa',
     name: 'EventKuy Official',
-    bio:
-        'Penyelenggara resmi platform EventKuy. Menyelenggarakan berbagai acara musik, workshop, seminar, dan olahraga di seluruh Indonesia.',
+    bio: 'Penyelenggara resmi platform EventKuy. Menyelenggarakan berbagai acara musik, workshop, seminar, dan olahraga di seluruh Indonesia.',
     city: 'Jakarta',
     verified: true,
   );
   static final _organizerRagaNusantara = Organizer(
     id: 'b25d7744-cee0-4bf7-b123-dea60edd901b',
     name: 'Raga Nusantara',
-    bio:
-        'Komunitas penggemar musik lokal yang mengedepankan karya anak bangsa dari Sabang hingga Merauke.',
+    bio: 'Komunitas penggemar musik lokal yang mengedepankan karya anak bangsa dari Sabang hingga Merauke.',
     city: 'Bandung',
     verified: true,
   );
   static final _organizerTechCamp = Organizer(
     id: 'c36e8855-dff1-4c08-c234-efb71fee022c',
     name: 'TechCamp Indonesia',
-    bio:
-        'Platform edukasi teknologi dan startup dengan workshop hands-on serta seminar dari praktisi industri.',
+    bio: 'Platform edukasi teknologi dan startup dengan workshop hands-on serta seminar dari praktisi industri.',
     city: 'Jakarta',
     verified: false,
   );
@@ -82,8 +79,7 @@ class MockApiService implements EventKuyApi {
       organizerId: 'a14d6633-bdd9-4af6-a012-cda59d8cc9fa',
       organizer: _organizerEventkuy,
       title: 'Sound of Tomorrow',
-      description:
-          'Sound of Tomorrow adalah festival musik yang menghadirkan deretan musisi terbaik dari berbagai genre. Nikmati pengalaman tak terlupakan bersama teman-teman, dengan panggung megah dan fasilitas lengkap.',
+      description: 'Sound of Tomorrow adalah festival musik yang menghadirkan deretan musisi terbaik dari berbagai genre. Nikmati pengalaman tak terlupakan bersama teman-teman, dengan panggung megah dan fasilitas lengkap.',
       date: DateTime(2025, 7, 12),
       location: 'Istora Senayan, Jl. Pintu Satu Senayan No. 1, Jakarta Pusat',
       price: 750000,
@@ -149,8 +145,7 @@ class MockApiService implements EventKuyApi {
       title: 'Future of Technology',
       description: 'Seminar AI, startup, dan masa depan teknologi.',
       date: DateTime(2025, 7, 18),
-      location:
-          'Jakarta Convention Center, Jl. Gatot Subroto, Jakarta Pusat',
+      location: 'Jakarta Convention Center, Jl. Gatot Subroto, Jakarta Pusat',
       price: 150000,
       quota: 1000,
       rating: 4.3,
@@ -315,9 +310,7 @@ class MockApiService implements EventKuyApi {
       throw StateError('Jumlah tiket minimal 1.');
     }
 
-    final sisa = event.available == null
-        ? null
-        : event.quota - _soldOf(event);
+    final sisa = event.available == null ? null : event.quota - _soldOf(event);
     if (sisa != null && sisa <= 0) {
       throw StateError('Stok tiket habis.');
     }
@@ -333,7 +326,7 @@ class MockApiService implements EventKuyApi {
         throw StateError('Voucher tidak valid atau kedaluwarsa.');
       }
       if (_usedVouchers.contains(voucher.code)) {
-        throw StateError('Voucher ${voucher.code} sudah pernah kamu pakai.');
+        throw StateError('Voucher ${voucher.code} sudah dipakai.');
       }
       appliedVoucher = voucher.code;
       discount = voucher.discount;
@@ -364,7 +357,9 @@ class MockApiService implements EventKuyApi {
           id: 'TRX-MOCK${_counter.toString().padLeft(6, '0')}',
           eventTitle: event.title,
           ticketCode: ticket.code,
-          total: (event.price + 2500 - ticketDiscount).clamp(0, 1 << 31).toDouble(),
+          total: (event.price + 2500 - ticketDiscount)
+              .clamp(0, 1 << 31)
+              .toDouble(),
           paymentMethod: paymentMethod,
           status: 'paid',
           createdAt: DateTime.now(),
@@ -384,6 +379,8 @@ class MockApiService implements EventKuyApi {
       adminFee: adminFee,
       discount: discount,
       total: total,
+      status: 'paid',
+      paymentMode: 'simulation',
     );
   }
 

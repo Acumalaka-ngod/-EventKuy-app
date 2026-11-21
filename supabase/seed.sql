@@ -11,10 +11,12 @@ alter table if exists public.events
   add column if not exists image_urls text[] not null default '{}';
 
 -- Voucher demo
+-- Aturan bisnis: satu kode voucher hanya bisa dipakai sekali secara global
+-- (lihat security_hardening.sql). Karena itu kuota selalu 1.
 insert into public.vouchers (code, discount, active_from, active_to, quota)
 values
-  ('EVENTKUY', 25000, now() - interval '1 day', now() + interval '1 year', 1000),
-  ('DISKON10', 25000, now() - interval '1 day', now() + interval '1 year', 1000)
+  ('EVENTKUY', 25000, now() - interval '1 day', now() + interval '1 year', 1),
+  ('DISKON10', 25000, now() - interval '1 day', now() + interval '1 year', 1)
 on conflict (code) do update
 set discount = excluded.discount,
     active_from = excluded.active_from,

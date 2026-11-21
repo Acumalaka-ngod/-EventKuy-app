@@ -242,6 +242,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _showSuccess(CheckoutResult result, Event event) {
+    final pending = result.isPending;
+    final accent = pending ? AppTheme.amber : AppTheme.green;
+    final shadow = pending ? const Color(0x408A5A0B) : const Color(0x401AA981);
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -262,37 +266,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 width: 82,
                 height: 82,
                 decoration: BoxDecoration(
-                  color: AppTheme.green,
+                  color: accent,
                   borderRadius: BorderRadius.circular(28),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x401AA981),
+                      color: shadow,
                       blurRadius: 30,
-                      offset: Offset(0, 14),
+                      offset: const Offset(0, 14),
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.check_rounded,
+                child: Icon(
+                  pending ? Icons.hourglass_top_rounded : Icons.check_rounded,
                   color: Colors.white,
                   size: 42,
                 ),
               ),
               const SizedBox(height: 22),
-              const Text(
-                'PEMBAYARAN TERKONFIRMASI',
+              Text(
+                pending ? 'MENUNGGU PEMBAYARAN' : 'PEMBAYARAN TERKONFIRMASI',
                 style: TextStyle(
-                  color: AppTheme.green,
+                  color: accent,
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.4,
                 ),
               ),
               const SizedBox(height: 9),
-              const Text(
-                'Pembayaran Berhasil!',
+              Text(
+                pending ? 'Pesanan Dibuat' : 'Pembayaran Berhasil!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: AppTheme.headingFont,
                   fontSize: 25,
                   fontWeight: FontWeight.w800,
@@ -301,7 +305,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                result.qty > 1
+                pending
+                    ? 'Pesanan ${result.qty > 1 ? '${result.qty} tiket' : 'tiket'} untuk ${event.title} sudah dibuat. E-tiket aktif otomatis setelah pembayaran dikonfirmasi.'
+                    : result.qty > 1
                     ? '${result.qty} e-tiket untuk ${event.title} sudah diterbitkan. Buka menu Tiket Saya untuk melihatnya.'
                     : 'E-tiket untuk ${event.title} sudah diterbitkan. Buka menu Tiket Saya untuk melihatnya.',
                 textAlign: TextAlign.center,
@@ -311,6 +317,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   height: 1.65,
                 ),
               ),
+              if (result.isSimulation) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: AppTheme.amberSoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        color: AppTheme.amber,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Mode simulasi: tidak ada dana yang ditarik.',
+                          style: TextStyle(
+                            color: AppTheme.amber,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(15),

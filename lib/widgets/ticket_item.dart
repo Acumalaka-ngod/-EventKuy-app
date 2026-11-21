@@ -25,7 +25,11 @@ class TicketItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCheckedIn = ticket.status.toLowerCase() == 'checked_in';
+    final status = ticket.status.toLowerCase();
+    final isCheckedIn = status == 'checked_in';
+    // Tiket mode live baru aktif setelah pembayaran dikonfirmasi webhook.
+    // Jangan tampilkan QR/instruksi masuk sebelum statusnya paid.
+    final isPending = status == 'pending';
 
     return Container(
       decoration: BoxDecoration(
@@ -78,7 +82,11 @@ class TicketItem extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              isCheckedIn ? 'SUDAH CHECK-IN' : 'TIKET AKTIF',
+                              isCheckedIn
+                                  ? 'SUDAH CHECK-IN'
+                                  : isPending
+                                  ? 'MENUNGGU BAYAR'
+                                  : 'TIKET AKTIF',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 8,
@@ -156,20 +164,55 @@ class TicketItem extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(24, 15, 24, 24),
               child: Column(
                 children: [
-                  QrImageView(
-                    data: ticket.code,
-                    size: 128,
-                    padding: EdgeInsets.zero,
-                    backgroundColor: Colors.white,
-                    eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.square,
-                      color: AppTheme.ink,
+                  if (isPending)
+                    Container(
+                      width: 128,
+                      height: 128,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppTheme.amberSoft,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.hourglass_top_rounded,
+                            color: AppTheme.amber,
+                            size: 34,
+                          ),
+                          SizedBox(height: 8),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              'QR aktif setelah pembayaran',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppTheme.amber,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    QrImageView(
+                      data: ticket.code,
+                      size: 128,
+                      padding: EdgeInsets.zero,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: AppTheme.ink,
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: AppTheme.ink,
+                      ),
                     ),
-                    dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
-                      color: AppTheme.ink,
-                    ),
-                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'TICKET ID',
@@ -217,6 +260,40 @@ class TicketItem extends StatelessWidget {
                               color: AppTheme.green,
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (isPending)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.amberSoft,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.hourglass_top_rounded,
+                            color: AppTheme.amber,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Selesaikan pembayaran untuk mengaktifkan tiket',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppTheme.amber,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
