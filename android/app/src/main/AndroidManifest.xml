@@ -12,7 +12,10 @@
     <application
         android:label="EventKuy"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <!-- Firebase Cloud Messaging: ikon notifikasi default. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"

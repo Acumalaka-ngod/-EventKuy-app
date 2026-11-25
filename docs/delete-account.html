@@ -1,19 +1,56 @@
 <!doctype html>
 <html lang="id">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hapus Akun EventKuy</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 0 auto; padding: 32px 20px; line-height: 1.6; }
-    input, button { font: inherit; padding: 10px 12px; }
-    button { cursor: pointer; }
-    button:disabled { cursor: wait; opacity: 0.6; }
-    .danger { background: #b42318; color: #fff; border: 0; border-radius: 8px; font-weight: 700; }
-    .message { margin-top: 16px; font-weight: 600; }
-    .warning { background: #fef3f2; border: 1px solid #fecdca; border-radius: 8px; padding: 14px 16px; }
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 32px 20px;
+      line-height: 1.6;
+    }
+
+    input,
+    button {
+      font: inherit;
+      padding: 10px 12px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+
+    .danger {
+      background: #b42318;
+      color: #fff;
+      border: 0;
+      border-radius: 8px;
+      font-weight: 700;
+    }
+
+    .message {
+      margin-top: 16px;
+      font-weight: 600;
+    }
+
+    .warning {
+      background: #fef3f2;
+      border: 1px solid #fecdca;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
   </style>
 </head>
+
 <body>
   <h1>Hapus Akun EventKuy</h1>
   <p>Halaman ini mengirim tautan verifikasi ke email akun EventKuy kamu.</p>
@@ -46,7 +83,7 @@
 
     // TODO: isi sebelum publikasi. Keduanya nilai publik (anon key), bukan service role key.
     const SUPABASE_URL = 'https://esdmpwwtapdgcusteiny.supabase.co';
-    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzZG1wd3d0YXBkZ2N1c3RlaW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwODI2MjUsImV4cCI6MjEwODY1ODYyNX0.4eU35bKrrJLCEOYFfSM8eYj_m19FN1iRAJs9SUIEDS0';
     const FUNCTION_URL = 'https://esdmpwwtapdgcusteiny.supabase.co/functions/v1/delete-account';
 
     const message = document.getElementById('message');
@@ -116,4 +153,5 @@
     }
   </script>
 </body>
+
 </html>

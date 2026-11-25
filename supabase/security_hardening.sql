@@ -821,6 +821,29 @@ begin
 
   perform public.expire_pending_checkouts();
 
+  -- Batasi pesanan pending agar satu akun tidak bisa menahan stok banyak
+  -- event selama 30 menit. Hitung per checkout_group_id, bukan per tiket.
+  if exists (
+    select 1
+    from public.transactions
+    where user_id = v_uid
+      and event_id = p_event_id
+      and status = 'pending'
+      and created_at > now() - interval '30 minutes'
+  ) then
+    raise exception 'Masih ada pesanan pending untuk event ini. Selesaikan atau tunggu kedaluwarsa.';
+  end if;
+
+  if (
+    select count(distinct checkout_group_id)
+    from public.transactions
+    where user_id = v_uid
+      and status = 'pending'
+      and created_at > now() - interval '30 minutes'
+  ) >= 3 then
+    raise exception 'Terlalu banyak pesanan pending. Selesaikan pesanan sebelumnya dulu.';
+  end if;
+
   select * into v_event
   from public.events
   where id = p_event_id

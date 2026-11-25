@@ -21,6 +21,12 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
+// Apakah invokasi Gradle ini benar-benar membangun varian release.
+// Dipakai agar build debug tetap jalan di mesin tanpa keystore.
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+
 android {
     namespace = "com.eventkuy.app"
     // flutter_local_notifications 23.x mensyaratkan compileSdk minimal 37.
@@ -71,6 +77,18 @@ android {
             }
         }
         release {
+            // Fail-closed: rilis tidak boleh diam-diam memakai kunci debug.
+            // Untuk build lokal tanpa keystore, lewati secara eksplisit dengan
+            // -PallowDebugSigning=true. Jangan dipakai untuk unggah Play Store.
+            if (releaseRequested &&
+                !keystorePropertiesFile.exists() &&
+                !project.hasProperty("allowDebugSigning")
+            ) {
+                throw GradleException(
+                    "android/key.properties tidak ditemukan. Build release dibatalkan. " +
+                        "Gunakan -PallowDebugSigning=true hanya untuk build lokal."
+                )
+            }
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

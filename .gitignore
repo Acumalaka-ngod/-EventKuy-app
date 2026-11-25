@@ -37,6 +37,8 @@ windows/flutter/generated_plugins.cmake
 *.png
 .DS_Store
 Thumbs.db
+# Metadata lokal Supabase CLI (project ref, dsb).
+supabase/.temp/
 
 # Flutter preview / AutoRecover
 .widget_preview/
