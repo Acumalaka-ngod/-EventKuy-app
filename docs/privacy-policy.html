@@ -6,54 +6,192 @@
   <title>Kebijakan Privasi EventKuy</title>
   <style>
     :root { color-scheme: light dark; }
-    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.65; max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
-    h1 { font-size: 1.75rem; }
-    h2 { font-size: 1.2rem; margin-top: 2rem; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      line-height: 1.7;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    h1 { font-size: 1.75rem; margin-bottom: .25rem; }
+    h2 { font-size: 1.15rem; margin-top: 2.2rem; }
     p, li { font-size: 1rem; }
+    ul { padding-left: 1.3rem; }
+    .meta { opacity: .7; font-size: .9rem; margin-top: 0; }
+    .note {
+      border-left: 3px solid #c63c14;
+      padding: .6rem 0 .6rem 1rem;
+      margin: 1.2rem 0;
+      background: rgba(198, 60, 20, .06);
+    }
+    table { border-collapse: collapse; width: 100%; margin: .8rem 0; }
+    th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid rgba(128,128,128,.3); vertical-align: top; }
+    th { font-weight: 600; }
     footer { margin-top: 3rem; font-size: .9rem; opacity: .75; }
   </style>
 </head>
 <body>
+
   <h1>Kebijakan Privasi EventKuy</h1>
-  <p>Terakhir diperbarui: 20 November 2026</p>
+  <p class="meta">Terakhir diperbarui: 27 November 2026 · Berlaku untuk aplikasi Android EventKuy (com.eventkuy.app)</p>
 
-  <p>EventKuy adalah aplikasi penemuan event dan pembelian tiket. Kami
-    mengumpulkan hanya data yang diperlukan untuk menyediakan layanan tersebut.</p>
+  <p>EventKuy adalah aplikasi penemuan event dan pembelian tiket. Kebijakan ini
+    menjelaskan data apa yang kami kumpulkan, mengapa, bagaimana kami
+    menyimpannya, dan hak apa yang kamu miliki atas data tersebut.</p>
 
-  <h2>Data yang kami kumpulkan</h2>
+  <h2>1. Data yang kami kumpulkan</h2>
+  <table>
+    <tr><th>Kategori</th><th>Data</th><th>Kapan dikumpulkan</th></tr>
+    <tr>
+      <td>Akun</td>
+      <td>Alamat email, kata sandi (disimpan sebagai hash oleh Supabase Auth), nama tampilan, foto profil</td>
+      <td>Saat mendaftar atau mengubah profil</td>
+    </tr>
+    <tr>
+      <td>Akun Google</td>
+      <td>Pengenal unik Google, nama, alamat email, dan foto profil</td>
+      <td>Hanya bila kamu memilih masuk dengan Google</td>
+    </tr>
+    <tr>
+      <td>Transaksi</td>
+      <td>Event yang dibeli, jenis dan jumlah tiket, metode pembayaran yang dipilih, kode tiket, status pembayaran, dan riwayat check-in</td>
+      <td>Saat melakukan checkout</td>
+    </tr>
+    <tr>
+      <td>Data pembeli</td>
+      <td>Nama dan nomor telepon yang kamu isi pada formulir checkout</td>
+      <td>Saat melakukan checkout</td>
+    </tr>
+    <tr>
+      <td>Penggunaan</td>
+      <td>Daftar event favorit, status baca notifikasi</td>
+      <td>Saat memakai fitur terkait</td>
+    </tr>
+    <tr>
+      <td>Perangkat</td>
+      <td>Token Firebase Cloud Messaging untuk mengirim notifikasi</td>
+      <td>Saat aplikasi pertama kali dijalankan</td>
+    </tr>
+  </table>
+
+  <h2>2. Data yang TIDAK kami kumpulkan</h2>
+  <p>EventKuy tidak mengakses dan tidak menyimpan:</p>
   <ul>
-    <li><strong>Data akun:</strong> nama, alamat email, kata sandi (disimpan dalam bentuk hash oleh Supabase Auth), foto profil, dan nomor telepon bila kamu mengisinya.</li>
-    <li><strong>Data Google:</strong> bila kamu masuk dengan Google, kami menerima pengenal unik, nama, alamat email, dan foto profil dari akun Google-mu.</li>
-    <li><strong>Data transaksi dan tiket:</strong> event yang dipilih, jumlah tiket, metode pembayaran yang dipilih, kode tiket, dan riwayat check-in.</li>
-    <li><strong>Data penggunaan:</strong> event favorit, notifikasi yang dibaca, dan token perangkat Firebase Cloud Messaging untuk mengirim notifikasi.</li>
+    <li>Lokasi (GPS maupun perkiraan)</li>
+    <li>Mikrofon atau rekaman suara</li>
+    <li>Kontak, SMS, atau riwayat panggilan</li>
+    <li>Data biometrik (sidik jari atau wajah)</li>
+    <li>Nomor kartu kredit, nomor rekening, atau PIN</li>
+    <li>Iklan ID untuk penargetan iklan</li>
   </ul>
 
-  <h2>Tujuan penggunaan</h2>
-  <p>Data dipakai untuk membuat dan mengelola akun, memproses pembelian tiket,
-    menampilkan e-ticket, mengirim notifikasi transaksi dan event, serta
-    menyimpan preferensi favorit. Kami tidak menjual data pribadi dan tidak
-    menggunakan data untuk iklan pihak ketiga.</p>
+  <h2>3. Izin perangkat dan alasannya</h2>
+  <table>
+    <tr><th>Izin</th><th>Fungsi</th><th>Sifat</th></tr>
+    <tr>
+      <td>Kamera</td>
+      <td>Memindai QR tiket saat check-in. Pemindaian diproses di perangkat dan hanya kode tiket yang dikirim ke server.</td>
+      <td>Opsional — hanya untuk organizer. Menolak izin tidak menghalangi pembelian tiket.</td>
+    </tr>
+    <tr>
+      <td>Notifikasi</td>
+      <td>Mengirim status tiket dan pengingat event.</td>
+      <td>Opsional — bisa dimatikan kapan saja di pengaturan Android.</td>
+    </tr>
+  </table>
+  <p>Aplikasi juga memakai izin tingkat normal <code>INTERNET</code>,
+    <code>ACCESS_NETWORK_STATE</code>, <code>WAKE_LOCK</code>,
+    <code>VIBRATE</code>, dan <code>FOREGROUND_SERVICE</code> untuk koneksi
+    jaringan serta pengiriman notifikasi. Izin <code>USE_BIOMETRIC</code> dan
+    <code>USE_FINGERPRINT</code> ditambahkan otomatis oleh pustaka Firebase
+    Cloud Messaging; aplikasi tidak memakai sensor biometrik dan tidak pernah
+    meminta sidik jari atau wajah.</p>
 
-  <h2>Penyimpanan dan keamanan</h2>
-  <p>Data disimpan di Supabase (PostgreSQL) dan Firebase. Seluruh komunikasi
-    menggunakan HTTPS. Kebijakan Row Level Security membatasi akses sehingga
-    pengguna hanya dapat membaca dan mengubah data miliknya sendiri.</p>
+  <h2>4. Tujuan penggunaan</h2>
+  <ul>
+    <li>Membuat dan mengelola akun serta sesi masuk</li>
+    <li>Memproses pembelian tiket dan menampilkan e-ticket</li>
+    <li>Memvalidasi tiket saat check-in di lokasi event</li>
+    <li>Mengirim notifikasi transaksi dan pengingat event</li>
+    <li>Menyimpan preferensi favorit</li>
+    <li>Mencegah penyalahgunaan, seperti percobaan masuk berulang</li>
+  </ul>
+  <p>Kami tidak menjual data pribadi, tidak membagikannya untuk iklan pihak
+    ketiga, dan tidak memakai data untuk pembuatan profil iklan.</p>
 
-  <h2>Penghapusan akun</h2>
-  <p>Kamu dapat menghapus akun dan data terkait langsung di aplikasi melalui
-    Profil &gt; Hapus Akun, atau melalui tautan penghapusan akun berikut:
-    <a href="delete-account.html">Hapus akun EventKuy</a>.
-    Tautan tersebut meminta verifikasi melalui akun yang sedang masuk.</p>
+  <h2>5. Layanan pihak ketiga</h2>
+  <p>Data diproses oleh penyedia layanan berikut, yang terikat perjanjian
+    pemrosesan data dengan penyedia masing-masing:</p>
+  <ul>
+    <li><strong>Supabase</strong> — basis data PostgreSQL, autentikasi, dan penyimpanan berkas</li>
+    <li><strong>Google Firebase Cloud Messaging</strong> — pengiriman notifikasi push</li>
+    <li><strong>Google Sign-In</strong> — hanya bila kamu memilih masuk dengan Google</li>
+  </ul>
+  <p>Data dapat diproses di pusat data di luar Indonesia. Pemrosesan tetap
+    mengikuti kebijakan privasi masing-masing penyedia.</p>
 
-  <h2>Hak kamu</h2>
-  <p>Kamu dapat meminta akses, koreksi, atau penghapusan data dengan
-    menghubungi kami melalui alamat di bawah ini. Kami akan menanggapi
-    permintaan sesuai ketentuan hukum yang berlaku.</p>
+  <h2>6. Pembayaran</h2>
+  <div class="note">
+    <p><strong>Mode simulasi.</strong> Versi aplikasi saat ini berjalan pada
+      mode pembayaran simulasi. Tidak ada dana yang ditarik dan tidak ada data
+      kartu, rekening, atau dompet digital yang dikumpulkan. Tiket langsung
+      aktif setelah checkout.</p>
+  </div>
 
-  <h2>Kontak</h2>
-  <p>Email: <a href="mailto:eventkuy.support@example.com">eventkuy.support@example.com</a>
-    (ganti dengan alamat resmi sebelum publikasi).</p>
+  <h2>7. Penyimpanan dan keamanan</h2>
+  <p>Seluruh komunikasi antara aplikasi dan server memakai HTTPS. Basis data
+    menerapkan Row Level Security sehingga pengguna hanya dapat membaca dan
+    mengubah data miliknya sendiri. Kata sandi disimpan sebagai hash dan tidak
+    pernah dapat dibaca oleh pengembang.</p>
+  <p>Meskipun demikian, tidak ada sistem yang sepenuhnya bebas risiko. Bila
+    terjadi pelanggaran data yang berdampak pada data pribadimu, kami akan
+    memberitahukannya melalui email terdaftar dan/atau notifikasi aplikasi.</p>
 
-  <footer>EventKuy · Kebijakan Privasi</footer>
+  <h2>8. Masa retensi</h2>
+  <ul>
+    <li><strong>Data akun</strong> disimpan selama akun aktif.</li>
+    <li><strong>Data akun</strong> dihapus atau dianonimkan paling lambat 30 hari setelah permintaan penghapusan diverifikasi.</li>
+    <li><strong>Riwayat transaksi dan tiket</strong> tetap disimpan setelah penghapusan akun, namun sudah dilepaskan dari identitasmu (nama, email, dan nomor telepon dihapus). Data ini diperlukan untuk laporan penjualan penyelenggara event dan pencegahan penyalahgunaan tiket.</li>
+  </ul>
+
+  <h2>9. Penghapusan akun</h2>
+  <p>Kamu dapat menghapus akun dengan dua cara:</p>
+  <ul>
+    <li><strong>Di aplikasi:</strong> Profil → Hapus Akun</li>
+    <li><strong>Melalui web:</strong> <a href="delete-account.html">Halaman permintaan penghapusan akun</a></li>
+  </ul>
+  <p>Yang dihapus: nama, email, foto profil, nomor telepon, daftar favorit,
+    status notifikasi, dan token perangkat.</p>
+  <p>Yang tetap disimpan: riwayat transaksi dan tiket dalam bentuk yang sudah
+    dianonimkan, tanpa keterkaitan dengan identitasmu.</p>
+
+  <h2>10. Hak kamu</h2>
+  <p>Sesuai peraturan perlindungan data pribadi yang berlaku di Indonesia,
+    kamu berhak untuk:</p>
+  <ul>
+    <li>Meminta salinan data pribadi yang kami simpan</li>
+    <li>Meminta perbaikan data yang tidak akurat</li>
+    <li>Meminta penghapusan akun dan data pribadi</li>
+    <li>Menarik persetujuan atas pemrosesan yang berbasis persetujuan</li>
+    <li>Mengajukan keluhan kepada kami maupun kepada otoritas perlindungan data</li>
+  </ul>
+  <p>Permintaan akan ditanggapi dalam waktu paling lambat 30 hari kerja.</p>
+
+  <h2>11. Anak-anak</h2>
+  <p>EventKuy tidak ditujukan untuk anak di bawah 13 tahun. Kami tidak dengan
+    sengaja mengumpulkan data dari anak di bawah 13 tahun. Bila kamu
+    mengetahui adanya akun seperti itu, hubungi kami agar dapat kami hapus.</p>
+
+  <h2>12. Perubahan kebijakan</h2>
+  <p>Kebijakan ini dapat diperbarui sewaktu-waktu. Perubahan penting akan
+    diberitahukan melalui aplikasi atau email terdaftar. Tanggal pembaruan
+    selalu tercantum di bagian atas halaman ini.</p>
+
+  <h2>13. Kontak</h2>
+  <p>Pertanyaan, permintaan data, atau keluhan dapat dikirim ke:</p>
+  <p>Email: <a href="mailto:eventkuy.support@gmail.com">eventkuy.support@gmail.com</a></p>
+
+  <footer>EventKuy · Kebijakan Privasi · 27 November 2026</footer>
+
 </body>
 </html>
